@@ -12,7 +12,8 @@
  If the last message sequence number +1 doesn't equal this sequence number then you lost a message. Too bad, slow down a bit!
  Hardware serial performed much better than software serial for me. 250000 Baud was about the max for the serial port.
  If you build a test receiver to analyze above then make sure it doesn't do too much Serial.Print to a slow serial port. This will miss messages.
- Version P2.2 - By TopBanana 05-03-2016 - Space the final frontier!
+
+ Version P2.2A - By TopBanana 05-03-2016
 
 */
 
