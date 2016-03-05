@@ -94,7 +94,6 @@ byte c;
   // second nibble
   c = what & 0x0F;
   fWriteCallback_ ((c << 4) | (c ^ 0x0F));
-
 }  // end of RS485::sendComplemented
 
 // send a message of "length" bytes (max 255) to other end

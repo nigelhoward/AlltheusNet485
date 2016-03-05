@@ -14,4 +14,8 @@ In my setup running a medium size bus, 250000 Baud, about 10 boards and sending 
 
 Hardware serial performed much better than software serial for me. 250000 Baud was about the max for the serial port. If you build a test receiver to analyze above then make sure it doesn't do too much Serial.Print to a slow serial port. This will skip messages and create sequence errors.
 
-More later....
+AllNet485 Extension uses an additional wire to stop other boards from transmitting. This reduces the speed capabilities of RS485
+But adds the ability to have multiple masters that can all talk on the same bus
+Primarily for home automation that doesn't require a fast bus but does require reliability
+
+More later ....
