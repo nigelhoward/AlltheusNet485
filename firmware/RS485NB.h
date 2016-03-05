@@ -127,7 +127,7 @@ class RS485
 
     // send data
     // receiverId - Who the message is for
-    // messageType - Distinguishing between message types - reserved type of 0X00 for a boardCast
+    // messageType - Distinguishing between message types - reserved type of 0X00 for a BoardCast
     // messageRequiresConfirmation - Please let me know you got my message! Library does not respond so handle this in your application code
     bool sendMsg (const byte * data, const byte length, const byte receiverId, const byte messageType, const bool messageRequiresConfirmation);
 
