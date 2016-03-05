@@ -1,6 +1,8 @@
 # AlltheusNet485
 Arduino and Photon library for inter IOT Device coms using an adapted version of RS485
 
+Allthough tested and functional the documentation needs updating and I am in the process of adding ring buffers to the AllNet485 methods of the RS485NB class. Please PM me for more details. 
+
 RS485 protocol library - Particle Photon / Arduino Version
 
 Based on above RS485 Non blocking by Nick Gammon. Thanks Nick :-) I could not have written this without your excellent code and forum. Please note I am not a C++ programmer. Pointers drive me nuts!
