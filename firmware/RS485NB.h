@@ -15,12 +15,13 @@
  Version P2.2 - By TopBanana 05-03-2016 - Space the final frontier!
 
 */
+
+// Particle boards have a PLATFORM_ID Defined but Arduino boards don't. Below includes relevant header. 
 #ifdef PLATFORM_ID
     #include "application.h" // This is Particle.io specific - Would have been arduino.h for Arduino
 #else
     #include "Arduino.h"
 #endif
-
 
 
 class RS485
@@ -150,7 +151,7 @@ class RS485
    Added by Tb.
 */
 
-  int rtsPin = D1; // RS485 RTS Pin. Pulled high when sending data on the bus.
+  int rtsPin = 255; // RS485 RTS Pin. Pulled high when sending data on the bus.
 
   void incrementErrorCount() {errorCount_ ++; }; // Means of incrementing the error counter in application for other errors
   void decrementErrorCount() {errorCount_ --; }; // Means of decrementing the error counter in application
