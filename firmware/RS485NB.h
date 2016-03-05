@@ -85,7 +85,7 @@ class RS485
 	unsigned long errorCountOverflow_;
 
 	// Sender properties
-	long sequenceNumber; // Incremented sequence number for example checking packets arrive in sequence
+	long sequenceNumber; // Incremented sequence number for checking that packets arrive in sequence
 
 	// Debug
 	bool debug;
