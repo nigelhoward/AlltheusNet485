@@ -18,10 +18,12 @@ AllNet485 Extension uses an additional wire to stop other boards from transmitti
 But adds the ability to have multiple masters that can all talk on the same bus
 Primarily for home automation that doesn't require a fast bus but does require reliability
 
-##Notes on callbacks
+###Notes on callbacks
+Callbacks handle the serial IO and are passed as function pointers in the instantiation of the RS485 Channel at the begining of the sketck. Different board types need different callback functions. The photon is very different from the Arduino Mega. 
 
-```
-// Callbacks for Photon - Arduino are different!
+For the Photon I am using the gardware serial1 for RS485 RX/TX
+```CPP
+// Callbacks for Photon
  size_t fWrite(const byte what) {return Serial1.write(what);}
  int fAvailable(){return Serial1.available();}
  int fRead(){return Serial1.read();} // See above
@@ -34,8 +36,10 @@ Primarily for home automation that doesn't require a fast bus but does require r
 	return 0; // Not Complete
  }
  // End callbacks
+```
 
-
+For Arduino serial callbacks use this but change the port numbers. E.G UCSR1A would be UCSR2A for the second serial2 on an Arduino Mega. 
+```CPP
 // Callbacks for Arduino - This is a Mega2560 with RS485 on TX/RX1
 size_t fWrite(const byte what) {return Serial1.write(what);}
 void fWait()
