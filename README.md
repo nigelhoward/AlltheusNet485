@@ -19,9 +19,14 @@ But adds the ability to have multiple masters that can all talk on the same bus
 Primarily for home automation that doesn't require a fast bus but does require reliability
 
 ###Notes on callbacks
-Callbacks handle the serial IO and are passed as function pointers in the instantiation of the RS485 Channel at the begining of the sketck. Different board types need different callback functions. The photon is very different from the Arduino Mega. 
+Callbacks handle the serial IO and are passed as function pointers in the instantiation of the RS485 Channel at the begining of the sketch. Here's an example on the class instantiation as myChannel:
+```CPP
+RS485 myChannel (fRead, fAvailable, fWrite,fWait, MESSAGE_SIZE+10);
+```
 
-For the Photon I am using the gardware serial1 for RS485 RX/TX
+Different board types need different callback functions. The photon is very different from the Arduino Mega. 
+
+For the Photon I am using hardware serial1 for RS485 RX/TX
 ```CPP
 // Callbacks for Photon
  size_t fWrite(const byte what) {return Serial1.write(what);}
