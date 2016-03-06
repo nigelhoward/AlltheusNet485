@@ -18,4 +18,38 @@ AllNet485 Extension uses an additional wire to stop other boards from transmitti
 But adds the ability to have multiple masters that can all talk on the same bus
 Primarily for home automation that doesn't require a fast bus but does require reliability
 
+Notes on callbacks
+
+// Callbacks for Photon - Arduino are different!
+ 
+ size_t fWrite(const byte what) {return Serial1.write(what);}
+ int fAvailable(){return Serial1.available();}
+ int fRead(){return Serial1.read();} // See above
+ void fWait() {while( !Serial1TXcomplete()){}} // See above
+ int Serial1TXcomplete(void)
+ {
+	if(USART_GetFlagStatus(USART1, USART_FLAG_TC) != RESET)
+	return 1; // Complete
+	else
+	return 0; // Not Complete
+ }
+ // End callbacks
+
+
+// Callbacks for Arduino - This is a Mega2560 with RS485 on TX/RX1
+
+size_t fWrite(const byte what) {return Serial1.write(what);}
+void fWait()
+{
+	while (!(UCSR1A & (1 << UDRE1)))	// Wait for empty transmit buffer
+	UCSR1A |= 1 << TXC1;				// Mark transmission not complete
+	while (!(UCSR1A & (1 << TXC1)));   // Wait for the transmission to complete
+}
+int fAvailable(){ return Serial1.available(); }
+int fRead(){ return Serial1.read(); }
+// End callbacks
+
+Credit again to Nick Gammon - http://www.gammon.com.au/forum/?id=11428 for these
+
+
 More later ....
