@@ -7,28 +7,14 @@
  Added more error reporting, debug serial output and strange extra byte read after ETX to stop nibble errors.
  Added RTS Control and AllNet485 stuff to allow all boards to share the bus as masters
 
- Version P2.1 - By TopBanana 21-02-2016
-
  Callbacks used by this to be set in application code.
  For using the TX,RX Pins on the board with most RS485 boards.
  Tested with Sparkfun RS485 that uses the SP3485 transceiver chip.
 
- // Callbacks for Photon - Arduino will be different! RTFM :-)
- 
- size_t fWrite(const byte what) {return Serial1.write(what);}
- int fAvailable(){return Serial1.available();}
- int fRead(){return Serial1.read();} // See above
- void fWait() {while( !Serial1TXcomplete()){}} // See above
- int Serial1TXcomplete(void)
- {
-	if(USART_GetFlagStatus(USART1, USART_FLAG_TC) != RESET)
-	return 1; // Complete
-	else
-	return 0; // Not Complete
- }
- // End callbacks
 
  */
+
+// Version P2.2 - By TopBanana 06-03-2016
 
 #include "RS485NB.h"
 
@@ -377,5 +363,5 @@ bool RS485::update ()
   // Stuff that needs doing while a delay is delaying
   void RS485::doDelayStuff()
   {
-
+	  // Reading the bus would be good here
   }
