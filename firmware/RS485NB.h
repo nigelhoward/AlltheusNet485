@@ -23,61 +23,76 @@
 #else
     #include "Arduino.h"
 #endif
+#include "AllQueue.h"
 
+const int MESSAGE_DATA_SIZE = 50;
+const int MESSAGE_HEADER_SIZE = 8;
+
+class AllMessage
+	{
+	public:
+
+		long Id;				// Id / Sequence number of the received message
+		byte SenderId;		// Who sent the message
+		byte ReceiverId;		// Who the message is for
+		byte Type;			// Type of message
+		byte RequiresConfirmation;	// Message needs a confirmation
+		bool Data[MESSAGE_DATA_SIZE]; // Data bytes not including the header size
+	};
 
 class RS485
   {
+	
+	typedef size_t (*WriteCallback)  (const byte what);    // send a byte to serial port
+	typedef int  (*AvailableCallback)  ();    // return number of bytes available
+	typedef int  (*ReadCallback)  ();    // read a byte from serial port
+	typedef void (*WaitCallback)  (); // For using hardware serial ports
 
-  typedef size_t (*WriteCallback)  (const byte what);    // send a byte to serial port
-  typedef int  (*AvailableCallback)  ();    // return number of bytes available
-  typedef int  (*ReadCallback)  ();    // read a byte from serial port
-  typedef void (*WaitCallback)  (); // For using hardware serial ports
+	enum {
+		STX = '\2',   // start of text
+		ETX = '\3'    // end of text
+	};  // end of enum
 
-  enum {
-        STX = '\2',   // start of text
-        ETX = '\3'    // end of text
-  };  // end of enum
-
-  // callback functions to do reading/writing
-  ReadCallback fReadCallback_;
-  AvailableCallback fAvailableCallback_;
-  WriteCallback fWriteCallback_;
-  WaitCallback fWaitCallback_;
+	// callback functions to do reading/writing
+	ReadCallback fReadCallback_;
+	AvailableCallback fAvailableCallback_;
+	WriteCallback fWriteCallback_;
+	WaitCallback fWaitCallback_;
 
 
-  // where we save incoming stuff
-  byte * data_;
+	// where we save incoming stuff
+	byte * data_;
 
-  // how much data is in the buffer
-  const int bufferSize_;
+	// how much data is in the buffer
+	const int bufferSize_;
 
-  // this is true once we have valid data in buf
-  bool available_;
+	// this is true once we have valid data in buf
+	bool available_;
 
-  // an STX (start of text) signals a packet start
-  bool haveSTX_;
+	// an STX (start of text) signals a packet start
+	bool haveSTX_;
 
-  // count of errors
-  unsigned long errorCount_;
+	// count of errors
+	unsigned long errorCount_;
 
-  // variables below are set when we get an STX
-  bool haveETX_;
-  byte inputPos_;
-  byte currentByte_;
-  bool firstNibble_;
-  unsigned long startTime_;
+	// variables below are set when we get an STX
+	bool haveETX_;
+	byte inputPos_;
+	byte currentByte_;
+	bool firstNibble_;
+	unsigned long startTime_;
 
-  // helper private functions
-  byte crc8 (const byte *addr, byte len);
-  void sendComplemented (const byte what);
+	// helper private functions
+	byte crc8 (const byte *addr, byte len);
+	void sendComplemented (const byte what);
 
-/*
-   Additional private properties and methods
-   Added by Tb.
-*/
+	/*
+	Additional private properties and methods
+	Added by Tb.
+	*/
 
-  int randomRetryDelay(); // Retry sending message delay
-  void doDelayStuff(); // Stuff to do for a delay
+	int randomRetryDelay(); // Retry sending message delay
+	void doDelayStuff(); // Stuff to do for a delay
 
 	// Error counters
 	unsigned long errorCountNibble_;
@@ -86,6 +101,7 @@ class RS485
 
 	// Sender properties
 	long sequenceNumber; // Incremented sequence number for checking that packets arrive in sequence
+	bool boardCastMessage = false; // Some messages are sent for everyone to see
 
 	// Debug
 	bool debug;
@@ -151,14 +167,26 @@ class RS485
    Additional public properties and methods
    Added by Tb.
 */
+	// Queues for messages
+	AllQueue <AllMessage> inQueue;
+	AllQueue <AllMessage> outQueue;
+	AllQueue <AllMessage> confQueue;
 
-  int rtsPin = 255; // RS485 RTS Pin. Pulled high when sending data on the bus.
+	int inQueueSize = 20;
+	int outQueueSize = 2;
+	int confQueueSize = 2;
 
-  void incrementErrorCount() {errorCount_ ++; }; // Means of incrementing the error counter in application for other errors
-  void decrementErrorCount() {errorCount_ --; }; // Means of decrementing the error counter in application
-  unsigned long getErrorCountNibble () const { return errorCountNibble_; }
-  unsigned long getErrorCountCRC () const { return errorCountCRC_; }
-  unsigned long getErrorCountOverflow () const { return errorCountOverflow_; }
+	AllMessage InQueueDequeue();
+
+	void initMessageQueues(int,int,int);
+
+	int rtsPin = 255; // RS485 RTS Pin. Pulled high when sending data on the bus.
+
+	void incrementErrorCount() {errorCount_ ++; }; // Means of incrementing the error counter in application for other errors
+	void decrementErrorCount() {errorCount_ --; }; // Means of decrementing the error counter in application
+	unsigned long getErrorCountNibble () const { return errorCountNibble_; }
+	unsigned long getErrorCountCRC () const { return errorCountCRC_; }
+	unsigned long getErrorCountOverflow () const { return errorCountOverflow_; }
 
 	// Enable / disable debug messages to serial port (USB)
 	// Doing it like this means that individual messages can be debugged instead of debugging the entire class
@@ -168,41 +196,45 @@ class RS485
 	// received message properties
 	byte messageSenderId;		// Who sent the message
 	byte messageReceiverId;		// Who the message is for
-	byte messageType = 0xFF;	// Type of message - To be implemented
+	byte messageType = 0xFF;	// Type of message
 	long messageSequenceNumber; // sequence number of the received message
 
 	// receive message filters
 	bool onlyReadMyMessages = false; // Only messages with myId as the receiver are read
 	bool ignoreBoardcasts = false; // Boardcasts originate from Id 0 and are for everyone to read unless this set to ignore them
 
-  // AllNet485 Uses an additional wire to stop other boards from transmitting. This reduces the speed capabilities of RS485
-  // But adds the ability to have multiple masters that can all talk on the same bus
-  // Primarily for home automation which doesn't require a very fast bus but does require reliability
-  // AllNet485 Methods & properties
+	// AllNet485 Uses an additional wire to stop other boards from transmitting. This reduces the speed capabilities of RS485
+	// But adds the ability to have multiple masters that can all talk on the same bus
+	// Primarily for home automation which doesn't require a very fast bus but does require reliability
+	// AllNet485 Methods & properties
 
-  bool allNet485Enabled = false; // No buss busy stuff is the default! Shame if you leave it like this :-)
-  byte busBusyPin = 255; // If this is 255 then AllNet485 Bus checking has been disabled
+	bool allNet485Enabled = false; // No buss busy stuff is the default! Shame if you leave it like this :-)
+	byte busBusyPin = 255; // If this is 255 then AllNet485 Bus checking has been disabled
 
-  void allNet485Enable (byte busyPin);
-  void allNet485Disable (); //
+	void allNet485Enable (byte busyPin);
+	void allNet485Disable (); //
 
-  void busMakeBusy(); // Makes the bus busy by pulling the busBusyPin wire to zero
-  void busMakeIdle(); // Lets the bus go back up to being pulled hi by the resistor on the wire
-  bool busIsBusy(); // Reads the wire to see if it is high (idle) or low (busy)
-  bool boardCastMessage = false; // Some messages are sent for everyone to see
+	void allNetUpdate(); // Updates allNet stuff - inQueue , outQueue , confQueue and confirmation messages
 
-  // Confirmation flag set by the message receiving code. Class does not send confirmations.
-  // You must handle sending confirmations in your application code.
-  bool messageRequiresConfirmation = false; // Set if sender asked for a confirmation
+	void busMakeBusy(); // Makes the bus busy by pulling the busBusyPin wire to zero
+	void busMakeIdle(); // Lets the bus go back up to being pulled hi by the resistor on the wire
+	bool busIsBusy(); // Reads the wire to see if it is high (idle) or low (busy)
+	void busDelay(int); // Bus delays for delaying by about the same MS but with bus updates / reads  
 
-  // Widens the gap either side of the data transmitted when bufferBusy wire goes low
-  // Helps reduce collisions but better keept low.
-  byte busBusyDelayBeforeTransmit = 1; // Millis
-  byte busBusyDelayAfterTransmit = 1; // Millis
+	// Confirmation flag set by the message receiving code. Class does not send confirmations.
+	// You must handle sending confirmations in your application code.
+	bool messageRequiresConfirmation = false; // Set if sender asked for a confirmation
 
-  // Retries lengthen the time spent in the sendMessage method. Better to keep this low unless you don't mind missing our on
-  // Other data that might have been sent to the board. No the less the retry delay is still very short.
-  // Better to handle retries in the application code as it can decide how important retrying is.
-  byte busBusyRetryCount = 5; // How many times send message is repeated before giving up and returning false - message not sent;
+	// Widens the gap either side of the data transmitted when bufferBusy wire goes low
+	// Helps reduce collisions but better keept low.
+	byte busBusyDelayBeforeTransmit = 1; // Millis
+	byte busBusyDelayAfterTransmit = 1; // Millis
+
+	// Retries lengthen the time spent in the sendMessage method. Better to keep this low unless you don't mind missing our on
+	// Other data that might have been sent to the board. No the less the retry delay is still very short.
+	// Better to handle retries in the application code as it can decide how important retrying is.
+	byte busBusyRetryCount = 5; // How many times send message is repeated before giving up and returning false - message not sent;
+
+
 
   }; // end of class RS485

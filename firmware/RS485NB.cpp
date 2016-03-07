@@ -233,29 +233,41 @@ bool RS485::update ()
           if (haveETX_)
             {
 
-			      if(debug) Serial.print(":CRC");
+			if(debug) Serial.print(":CRC");
             if (crc8 (data_, inputPos_) != currentByte_)
-              {
-              reset ();
-              errorCountCRC_++;
-              errorCount_++;
-              break;  // bad crc
-              } // end of bad CRC
+            {
+            reset ();
+            errorCountCRC_++;
+            errorCount_++;
+            break;  // bad crc
+            } // end of bad CRC
 
-        			// Strangely (my lack of understanding :-) there is a spare byte on the end that causes a nibble error.
-        			// Comment this line out if you are getting lots of errors.
-        			// Required for Particle.io Photon
-        			byte spareByte = fReadCallback_ (); // Extra byte read
+			// Strangely (my lack of understanding :-) there is a spare byte on the end that causes a nibble error.
+			// Comment this line out if you are getting lots of errors.
+			// Required for Particle.io Photon
+			byte spareByte = fReadCallback_ (); // Extra byte read
 
-        			// Set properties
-        			messageType = data_[0]; // Type of message
-        			messageReceiverId = data_[1]; // Who the message is for
-        			messageSenderId = data_[2]; // Who sent the message
-        			messageSequenceNumber = (data_[03] << 24) | (data_[04] << 16) | (data_[05] << 8) | (data_[06]); // sequence number of this received message
-              messageRequiresConfirmation = data_[7];
+			// Set properties
+			messageType = data_[0]; // Type of message
+			messageReceiverId = data_[1]; // Who the message is for
+			messageSenderId = data_[2]; // Who sent the message
+			messageSequenceNumber = (data_[03] << 24) | (data_[04] << 16) | (data_[05] << 8) | (data_[06]); // sequence number of this received message
+			messageRequiresConfirmation = data_[7];
 
-              available_ = true;
-              return true;  // show data ready
+			// Create a new AllMessage for the inQueue
+			AllMessage newAllMessage;
+			newAllMessage.Type = messageType;
+			newAllMessage.ReceiverId = messageReceiverId;
+			newAllMessage.SenderId = messageSenderId;
+			newAllMessage.Id = messageSequenceNumber;
+			newAllMessage.RequiresConfirmation = messageRequiresConfirmation;
+
+			// Push the message on the queue
+			inQueue.enqueue(newAllMessage);
+
+            available_ = true;
+
+            return true;  // show data ready
             }  // end if have ETX already
 
           // keep adding if not full
@@ -306,16 +318,30 @@ bool RS485::update ()
   return false;  // not ready yet
 
   } // end of RS485::update
+
   // AllNet485 Extension uses an additional wire to stop other boards from transmitting. This reduces the speed capabilities of RS485
   // But adds the ability to have multiple masters that can all talk on the same bus
   // Primarily for home automation that doesn't require a fast bus but does require reliability
   // AllNet485 Methods & properties
+
+  void RS485::allNetUpdate()
+  {
+
+  }
+
+  AllMessage RS485::InQueueDequeue()
+  {
+	return inQueue.dequeue();
+  }
 
   void RS485::allNet485Enable (byte busyPin)
   {
     busBusyPin = busyPin;
     allNet485Enabled = true;
     pinMode(busBusyPin, INPUT);
+
+	// Initalise the queues
+	initMessageQueues(inQueueSize, outQueueSize, confQueueSize);
   }
   void RS485::allNet485Disable ()
   {
@@ -349,6 +375,20 @@ bool RS485::update ()
       return false;
     }
   }
+  // Does a delay of approx the right number of microseconds whilst still reading the bus / serial port
+  void RS485::busDelay(int delayMS)
+  {
+	unsigned long microDelayRequired = 1000 * (unsigned long)delayMS;
+	unsigned long microStart = micros();
+
+	while (micros() < (microStart + microDelayRequired))
+	{
+		// Check if overflow (back to wero for micros() occured during this method
+		if (microStart > micros()) microStart = micros();  // Re-assign it so we don't get a super huge delay
+		if(allNet485Enabled) update(); // Read any data that's on it's way in if AllNet is enabled
+	}
+
+  }
 
   // Does a random delay with a twist
   int RS485::randomRetryDelay()
@@ -364,4 +404,13 @@ bool RS485::update ()
   void RS485::doDelayStuff()
   {
 	  // Reading the bus would be good here
+  }
+
+  // Message Queue setup
+  void RS485::initMessageQueues(int inSize, int outSize, int conSize)
+  {
+	  inQueue.init(inSize); // Incoming messages
+	  outQueue.init(outSize); // Outgoing messages
+	  confQueue.init(conSize); // Messages that need a confirmation
+
   }
