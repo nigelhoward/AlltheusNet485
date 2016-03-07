@@ -95,18 +95,18 @@ bool RS485::sendMsg (const byte * data, const byte length, const byte receiverId
     bool busWasStillBusy = true;
     for(int i = 0 ; i < busBusyRetryCount; i++)
     {
-        Serial.print("i:");
-        Serial.println(i);
-      if(!busIsBusy())
-      {
-        busWasStillBusy = false;
-        i=busBusyRetryCount + 1;
-      }
+		if (debug)	{Serial.print("i:"); Serial.println(i);}
+
+		if(!busIsBusy())
+		{
+			busWasStillBusy = false;
+			i=busBusyRetryCount + 1;
+		}
     }
     if(busWasStillBusy)
     {
-      Serial.println("busStillBusy");
-      return false; // While loop finished after all retries
+		if (debug) Serial.println("busStillBusy");
+		return false; // While loop finished after all retries
     }
   }
 
@@ -117,10 +117,10 @@ bool RS485::sendMsg (const byte * data, const byte length, const byte receiverId
 
   // Build an entire message buffer to use in send. Bit of a waste of bytes :-)
   // But a quick and easy adaption of existing code so CRC still works
-  byte messageData[255];
+  byte messageData[MESSAGE_DATA_SIZE+MESSAGE_HEADER_SIZE];
 
   // Header
-  int headerSize = 8;
+  int headerSize = MESSAGE_HEADER_SIZE;
   messageData[0]=messageType;
   messageData[1]=receiverId;
   messageData[2]=myId;
@@ -137,12 +137,16 @@ bool RS485::sendMsg (const byte * data, const byte length, const byte receiverId
   for (byte i = 0; i < length; i++)
   {
 	messageData[headerSize+i] = data [i];
+	//if (allNet485Enabled) update();
   }
 
   // Send the data
   for (byte i = 0; i < (length + headerSize); i++)
-  sendComplemented (messageData [i]);
-
+  {
+	  sendComplemented(messageData[i]);
+	  //if (allNet485Enabled) update();
+  }
+  
   // End of transmission byte
   fWriteCallback_ (ETX);  // ETX
 
