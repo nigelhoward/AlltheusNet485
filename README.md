@@ -57,7 +57,8 @@ int fAvailable(){ return Serial1.available(); }
 int fRead(){ return Serial1.read(); }
 // End callbacks
 ```
-Credit again to Nick Gammon - http://www.gammon.com.au/forum/?id=11428 for these
-
+###Credits:-
+Nick Gammon - http://www.gammon.com.au/forum/?id=11428 - For the original RS485 Non blocking library
+Efstathios Chatzikyriakidis - http://playground.arduino.cc/Code/QueueArray - For QueueArray library I hacked to suit my requirements here.
 
 More later ....
