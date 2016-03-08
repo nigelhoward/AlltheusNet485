@@ -1,4 +1,17 @@
-// header defining the interface of the source.
+/*
+ *    2014-02-03  Brian Fletcher  <brian.jf.fletcher@gmail.com>
+ *
+ *      - added enqueue(), dequeue() and front().
+ *
+ *    2010-09-29  Efstathios Chatzikyriakidis  <contact@efxa.org>
+ */ 
+// Header file contains the header and the cpp
+
+// All credit please to the above authors for the excellent QueueArray library for Arduino
+// Details of the orginal library can be found here - http://playground.arduino.cc/Code/QueueArray
+// Which I have chopped and modified to suit my needs.
+// AllQueue Version 1.2 09-03-2016
+
 #ifndef _ALLQUEUE_H
 #define _ALLQUEUE_H
 
