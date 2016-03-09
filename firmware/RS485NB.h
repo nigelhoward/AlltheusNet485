@@ -13,7 +13,7 @@
  Hardware serial performed much better than software serial for me. 250000 Baud was about the max for the serial port.
  If you build a test receiver to analyze above then make sure it doesn't do too much Serial.Print to a slow serial port. This will miss messages.
 
- Version P2.2A - By TopBanana 05-03-2016
+ Version P2.3 - By TopBanana 05-03-2016
 
 */
 
@@ -31,13 +31,14 @@ const int MESSAGE_HEADER_SIZE = 8;
 class AllMessage
 	{
 	public:
-
-		long Id;				// Id / Sequence number of the received message
-		byte SenderId;		// Who sent the message
-		byte ReceiverId;		// Who the message is for
-		byte Type;			// Type of message
-		byte RequiresConfirmation;	// Message needs a confirmation
-		bool Data[MESSAGE_DATA_SIZE]; // Data bytes not including the header size
+			
+		long Id;						// Id / Sequence number of the received message
+		byte SenderId;					// Who sent the message
+		byte ReceiverId;				// Who the message is for
+		byte Type;						// Type of message
+		byte RequiresConfirmation;		// Message needs a confirmation
+		unsigned long WhenReceived;		// When the message was recieved in millis
+		bool Data[MESSAGE_DATA_SIZE];	// Data bytes not including the header size
 	};
 
 class RS485

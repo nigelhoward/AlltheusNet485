@@ -265,6 +265,7 @@ bool RS485::update ()
 			newAllMessage.SenderId = messageSenderId;
 			newAllMessage.Id = messageSequenceNumber;
 			newAllMessage.RequiresConfirmation = messageRequiresConfirmation;
+			newAllMessage.WhenReceived = millis();
 
 			// Push the message on the queue
 			inQueue.enqueue(newAllMessage);
