@@ -32,12 +32,12 @@ class AllMessage
 	{
 	public:
 			
-		long Id;						// Id / Sequence number of the received message
+		unsigned long Id;				// Id / Sequence number of the received message
 		byte SenderId;					// Who sent the message
 		byte ReceiverId;				// Who the message is for
 		byte Type;						// Type of message
 		byte RequiresConfirmation;		// Message needs a confirmation
-		unsigned long WhenReceived;		// When the message was recieved in millis
+		unsigned int WhenReceived;		// When the message was recieved in millis but cast to an u int
 		bool Data[MESSAGE_DATA_SIZE];	// Data bytes not including the header size
 	};
 
@@ -49,10 +49,11 @@ class RS485
 	typedef int  (*ReadCallback)  ();    // read a byte from serial port
 	typedef void (*WaitCallback)  (); // For using hardware serial ports
 
-	enum {
+	enum
+	{
 		STX = '\2',   // start of text
 		ETX = '\3'    // end of text
-	};  // end of enum
+	};  // end of STX/ETX enum
 
 	// callback functions to do reading/writing
 	ReadCallback fReadCallback_;
@@ -111,6 +112,13 @@ class RS485
 	byte myId = 0xFF; // Aka senderId
 
   public:
+	  // Types of message
+	  enum 
+	  {
+		  BOARDCAST,		// Message sent to all boards on the bus
+		  MESSAGE,		// For a specific Id
+		  CONFIRMATION	// Confirmation that message received
+	  };
 
 	// constructor
     RS485 (
@@ -168,6 +176,7 @@ class RS485
    Additional public properties and methods
    Added by Tb.
 */
+
 	// Queues for messages
 	AllQueue <AllMessage> inQueue;
 	AllQueue <AllMessage> outQueue;
@@ -225,6 +234,8 @@ class RS485
 	// Confirmation flag set by the message receiving code. Class does not send confirmations.
 	// You must handle sending confirmations in your application code.
 	bool messageRequiresConfirmation = false; // Set if sender asked for a confirmation
+
+	bool sendConfirmation(AllMessage);
 
 	// Widens the gap either side of the data transmitted when bufferBusy wire goes low
 	// Helps reduce collisions but better keept low.

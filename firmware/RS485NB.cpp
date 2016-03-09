@@ -165,19 +165,8 @@ bool RS485::sendMsg (const byte * data, const byte length, const byte receiverId
 // assemble the finished packet in 'data_'
 
 // returns true if packet received.
-
-// You could implement a timeout by seeing if isPacketStarted() returns
-// true, and if too much time has passed since getPacketStartTime() time
-
 bool RS485::update ()
   {
-  // no data? can't go ahead (eg. begin() not called)
-  if (data_ == NULL)
-    return false;
-
-  // no callbacks? Can't read
-  if (fAvailableCallback_ == NULL || fReadCallback_ == NULL)
-    return false;
 
   while (fAvailableCallback_ () > 0)
     {
@@ -223,9 +212,9 @@ bool RS485::update ()
           // high-order nibble?
           if (firstNibble_)
             {
-            currentByte_ = inByte;
-            firstNibble_ = false;
-            break;
+				currentByte_ = inByte;
+				firstNibble_ = false;
+				break;
             }  // end of first nibble
 
           // low-order nibble
@@ -236,14 +225,13 @@ bool RS485::update ()
           // if we have the ETX this must be the CRC
           if (haveETX_)
             {
-
-			if(debug) Serial.print(":CRC");
-            if (crc8 (data_, inputPos_) != currentByte_)
+				if(debug) Serial.print(":CRC");
+				if (crc8 (data_, inputPos_) != currentByte_)
             {
-            reset ();
-            errorCountCRC_++;
-            errorCount_++;
-            break;  // bad crc
+				reset ();
+				errorCountCRC_++;
+				errorCount_++;
+				break;  // bad crc
             } // end of bad CRC
 
 			// Strangely (my lack of understanding :-) there is a spare byte on the end that causes a nibble error.
@@ -265,11 +253,17 @@ bool RS485::update ()
 			newAllMessage.SenderId = messageSenderId;
 			newAllMessage.Id = messageSequenceNumber;
 			newAllMessage.RequiresConfirmation = messageRequiresConfirmation;
-			newAllMessage.WhenReceived = millis();
+
+			// Keep the time it arrived albeit for 0 to 64 seconds because this is a u int and not a u long
+			// Good enough for what we need without adding extra memory to the queues 
+			newAllMessage.WhenReceived = (int)millis();
 
 			// Push the message on the queue
 			inQueue.enqueue(newAllMessage);
 
+			// Send confirmation if required
+			if(messageRequiresConfirmation) sendConfirmation(newAllMessage);
+			
             available_ = true;
 
             return true;  // show data ready
@@ -278,27 +272,27 @@ bool RS485::update ()
           // keep adding if not full
         if (inputPos_ < bufferSize_)
   		  {
-          // Is it a boardCast? - messageType=0x00
-  				if(inputPos_ == 0 && currentByte_ == 0x00)
-  				{
-  					boardCastMessage = true;
-  				}
+			// Is it a boardCast? - messageType=0x00
+			if(inputPos_ == 0 && currentByte_ == BOARDCAST)
+			{
+  				boardCastMessage = true;
+			}
 
-  				if(ignoreBoardcasts==true) boardCastMessage = false; // Even if it is a boardcast say it isn't so it gets ignored
+			if(ignoreBoardcasts==true) boardCastMessage = false; // Even if it is a boardcast say it isn't so it gets ignored
 
-  				if(!boardCastMessage)
+			if(!boardCastMessage)
+			{
+  				// Check if it's for me and not a boardCast :-) - > Second byte is the receiver Id in the message
+  				if(inputPos_ == 1 && onlyReadMyMessages == true )
   				{
-  					// Check if it's for me and not a boardCast :-) - > Second byte is the receiver Id in the message
-  					if(inputPos_ == 1 && onlyReadMyMessages == true )
+  					if(currentByte_ != myId)
   					{
-  						if(currentByte_ != myId)
-  						{
-  							reset();
-  							return false;
-  						}
+  						reset();
+  						return false;
   					}
   				}
-
+			}
+		  // Add the data to the data_ array
           data_ [inputPos_++] = currentByte_;
     			if(debug)
     			{
@@ -409,6 +403,20 @@ bool RS485::update ()
   void RS485::doDelayStuff()
   {
 	  // Reading the bus would be good here
+  }
+
+  bool RS485::sendConfirmation(AllMessage allMessage)
+  {
+	allMessage.SenderId == 0x11; // Basil
+	
+	//byte confirmationMessage[] ="CONFIRMATION      ";
+	////sendMsg(confirmationMessage,sizeof(confirmationMessage),allMessage.SenderId,CONFIRMATION,false);
+	//this->busBusyRetryCount = 100;
+	//sendMsg(confirmationMessage,MESSAGE_DATA_SIZE,0x11,MESSAGE,false);
+	//this->busBusyRetryCount = 2;
+	
+	//Serial.print ("CONF to:");
+	//Serial.println(allMessage.SenderId,HEX);
   }
 
   // Message Queue setup
