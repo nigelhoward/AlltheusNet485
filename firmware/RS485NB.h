@@ -13,11 +13,11 @@
  Hardware serial performed much better than software serial for me. 250000 Baud was about the max for the serial port.
  If you build a test receiver to analyze above then make sure it doesn't do too much Serial.Print to a slow serial port. This will miss messages.
 
- Version P2.4 - By TopBanana 05-03-2016
+ Version P2.4 - By TopBanana 010-03-2016
 
 */
 
-// Particle boards have a PLATFORM_ID Defined but Arduino boards don't. Below includes relevant header. 
+// Particle boards have a PLATFORM_ID Defined but Arduino boards don't. Below includes relevant header.
 #ifdef PLATFORM_ID
     #include "application.h" // This is Particle.io specific - Would have been arduino.h for Arduino
 #else
@@ -31,7 +31,7 @@ const int MESSAGE_HEADER_SIZE = 8;
 class AllMessage
 	{
 	public:
-			
+
 		unsigned long Id;				// Id / Sequence number of the received message
 		byte SenderId;					// Who sent the message
 		byte ReceiverId;				// Who the message is for
@@ -43,7 +43,7 @@ class AllMessage
 
 class RS485
   {
-	
+
 	typedef size_t (*WriteCallback)  (const byte what);    // send a byte to serial port
 	typedef int  (*AvailableCallback)  ();    // return number of bytes available
 	typedef int  (*ReadCallback)  ();    // read a byte from serial port
@@ -113,7 +113,7 @@ class RS485
 
   public:
 	  // Types of message
-	  enum 
+	  enum
 	  {
 		  BOARDCAST,		// Message sent to all boards on the bus
 		  MESSAGE,		// For a specific Id
@@ -229,7 +229,7 @@ class RS485
 	void busMakeBusy(); // Makes the bus busy by pulling the busBusyPin wire to zero
 	void busMakeIdle(); // Lets the bus go back up to being pulled hi by the resistor on the wire
 	bool busIsBusy(); // Reads the wire to see if it is high (idle) or low (busy)
-	void busDelay(int); // Bus delays for delaying by about the same MS but with bus updates / reads  
+	void busDelay(int); // Bus delays for delaying by about the same MS but with bus updates / reads
 
 	// Confirmation flag set by the message receiving code. Class does not send confirmations.
 	// You must handle sending confirmations in your application code.
