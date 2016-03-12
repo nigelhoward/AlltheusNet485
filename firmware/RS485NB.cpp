@@ -14,7 +14,7 @@
 
  */
 
-// Version P2.2 - By TopBanana 06-03-2016
+// Version P2.2 - By TopBanana 12-03-2016
 
 #include "RS485NB.h"
 
