@@ -339,7 +339,7 @@ bool RS485::update ()
     allNet485Enabled = true;
     pinMode(busBusyPin, INPUT);
 
-	// Initalise the queues
+	// Initialize the queues
 	initMessageQueues(inQueueSize, outQueueSize, confQueueSize);
   }
   void RS485::allNet485Disable ()
@@ -406,9 +406,9 @@ bool RS485::update ()
   }
 
   bool RS485::sendConfirmation(AllMessage allMessage)
-  {
-	//allMessage.SenderId == 0x11; // Basil
+  {	  
 	
+	//allMessage.SenderId == 0x11; // Basil
 	//byte confirmationMessage[] ="CONFIRMATION      ";
 	////sendMsg(confirmationMessage,sizeof(confirmationMessage),allMessage.SenderId,CONFIRMATION,false);
 	//this->busBusyRetryCount = 100;
