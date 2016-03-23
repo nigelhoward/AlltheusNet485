@@ -13,7 +13,7 @@
  Hardware serial performed much better than software serial for me. 250000 Baud was about the max for the serial port.
  If you build a test receiver to analyze above then make sure it doesn't do too much Serial.Print to a slow serial port. This will miss messages.
 
- Version P2.4 - By TopBanana 010-03-2016
+ Version P2.4 - By TopBanana 23-03-2016
 
 */
 
@@ -38,7 +38,7 @@ class AllMessage
 		byte Type;						// Type of message
 		byte RequiresConfirmation;		// Message needs a confirmation
 		unsigned int WhenReceived;		// When the message was received in millis but cast to an u int
-		bool Data[MESSAGE_DATA_SIZE];	// Data bytes not including the header size
+		byte Data[MESSAGE_DATA_SIZE];	// Data bytes not including the header size
 	};
 
 class RS485
@@ -182,16 +182,18 @@ class RS485
 	AllQueue <AllMessage> outQueue;
 	AllQueue <AllMessage> confQueue;
 
-	int inQueueSize = 20;
-	int outQueueSize = 2;
-	int confQueueSize = 2;
+	int inQueueSize = 8;
+	int outQueueSize = 6;
+	int confQueueSize = 4;
 
+	// The actual in and out queuing methods
 	AllMessage InQueueDequeue();
-	bool OutQueueEnqueue(AllMessage);
+	void OutQueueEnqueue(AllMessage);
 
 	void initMessageQueues(int,int,int);
 
 	int rtsPin = 255; // RS485 RTS Pin. Pulled high when sending data on the bus.
+	int messageNotSentLED = 255; // RS485 RTS Pin. Pulled high when sending data on the bus.
 
 	void incrementErrorCount() {errorCount_ ++; }; // Means of incrementing the error counter in application for other errors
 	void decrementErrorCount() {errorCount_ --; }; // Means of decrementing the error counter in application
@@ -239,7 +241,7 @@ class RS485
 	bool sendConfirmation(AllMessage);
 
 	// Widens the gap either side of the data transmitted when bufferBusy wire goes low
-	// Helps reduce collisions but better keept low.
+	// Helps reduce collisions but better kept low.
 	byte busBusyDelayBeforeTransmit = 1; // Millis
 	byte busBusyDelayAfterTransmit = 1; // Millis
 

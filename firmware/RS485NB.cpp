@@ -14,7 +14,7 @@
 
  */
 
-// Version P2.2 - By TopBanana 12-03-2016
+// Version P2.4 - By TopBanana 23-03-2016
 
 #include "RS485NB.h"
 
@@ -26,6 +26,7 @@ void RS485::begin (byte boardId)
   reset ();
   errorCount_ = 0;
   pinMode(rtsPin, OUTPUT);
+  if(messageNotSentLED!=255) pinMode(messageNotSentLED, OUTPUT);
 
   } // end of RS485::begin
 
@@ -325,6 +326,27 @@ bool RS485::update ()
 
   void RS485::allNetUpdate()
   {
+	  // Do a read / update
+	    RS485::update();
+	  
+	  // Send any messages that are in the OutQueue
+	  if(outQueue.count()>0)
+	  {
+		AllMessage allMessage = outQueue.dequeue();
+		if(RS485::sendMsg (allMessage.Data, MESSAGE_DATA_SIZE , allMessage.ReceiverId,allMessage.Type,allMessage.RequiresConfirmation))
+		{
+			// It worked
+			digitalWrite(messageNotSentLED, LOW);	    
+			RS485::update();
+		}
+		else
+		{
+			// Did not work - Put message back in the OutQueue
+			digitalWrite(messageNotSentLED, HIGH);
+			OutQueueEnqueue(allMessage);
+		    RS485::update();
+		}
+	  }
 
   }
 
@@ -332,9 +354,9 @@ bool RS485::update ()
   {
 	return inQueue.dequeue();
   }
-  bool RS485::OutQueueEnqueue(AllMessage allMessage)
+  void RS485::OutQueueEnqueue(AllMessage allMessage)
   {
-	  return outQueue.enqueue(allMessage)
+	  outQueue.enqueue(allMessage);
   }
 
   void RS485::allNet485Enable (byte busyPin)
