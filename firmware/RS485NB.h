@@ -37,7 +37,7 @@ class AllMessage
 		byte ReceiverId;				// Who the message is for
 		byte Type;						// Type of message
 		byte RequiresConfirmation;		// Message needs a confirmation
-		unsigned int WhenReceived;		// When the message was recieved in millis but cast to an u int
+		unsigned int WhenReceived;		// When the message was received in millis but cast to an u int
 		bool Data[MESSAGE_DATA_SIZE];	// Data bytes not including the header size
 	};
 
