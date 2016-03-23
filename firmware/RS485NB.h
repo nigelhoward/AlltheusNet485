@@ -187,6 +187,7 @@ class RS485
 	int confQueueSize = 2;
 
 	AllMessage InQueueDequeue();
+	bool OutQueueEnqueue(AllMessage);
 
 	void initMessageQueues(int,int,int);
 

@@ -332,6 +332,10 @@ bool RS485::update ()
   {
 	return inQueue.dequeue();
   }
+  bool RS485::OutQueueEnqueue(AllMessage allMessage)
+  {
+	  return outQueue.enqueue(allMessage)
+  }
 
   void RS485::allNet485Enable (byte busyPin)
   {
