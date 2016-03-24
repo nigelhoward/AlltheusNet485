@@ -110,6 +110,12 @@ class RS485
 
 	// Board Id
 	byte myId = 0xFF; // Aka senderId
+	
+	// Bus speed	
+	unsigned int busSpeed = 0; // Approx messages per second calculation
+	unsigned long busSpeedLastMillis = 0; // Use to calculate approx bus speed in messages per second
+	unsigned long busSpeedLastMessageReceivedCount = 0; // Use to calculate approx bus speed in messages per second
+	void calculateBusSpeed(); // Does the waiting and calculation
 
   public:
 	  // Types of message
@@ -185,6 +191,9 @@ class RS485
 	int inQueueSize = 8;
 	int outQueueSize = 6;
 	int confQueueSize = 4;
+	
+	unsigned int messagesReceivedCounter = 0;
+	unsigned int messagesSentCounter = 0;
 
 	// The actual in and out queuing methods
 	AllMessage InQueueDequeue();
@@ -233,6 +242,8 @@ class RS485
 	void busMakeIdle(); // Lets the bus go back up to being pulled hi by the resistor on the wire
 	bool busIsBusy(); // Reads the wire to see if it is high (idle) or low (busy)
 	void busDelay(int); // Bus delays for delaying by about the same MS but with bus updates / reads
+	
+	int  getBusSpeed(); // Approx messages per second calculation
 
 	// Confirmation flag set by the message receiving code. Class does not send confirmations.
 	// You must handle sending confirmations in your application code.

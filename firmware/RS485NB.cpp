@@ -153,6 +153,8 @@ bool RS485::sendMsg (const byte * data, const byte length, const byte receiverId
   fWaitCallback_(); // Waits for hardware serial sends to complete
 
   digitalWrite(rtsPin,LOW);
+  messagesSentCounter++;
+  
   if(allNet485Enabled)busMakeIdle();
 
   return true;
@@ -264,6 +266,7 @@ bool RS485::update ()
 			
 			// Push the message on the queue
 			inQueue.enqueue(newAllMessage);
+			messagesReceivedCounter++;
 
 			// Send confirmation if required
 			if(messageRequiresConfirmation) sendConfirmation(newAllMessage);
@@ -350,6 +353,8 @@ bool RS485::update ()
 		    RS485::update();
 		}
 	  }
+	  
+	  calculateBusSpeed();
 
   }
 
@@ -417,6 +422,21 @@ bool RS485::update ()
 	}
 
   }
+  
+  int RS485::getBusSpeed()
+  {
+	 return busSpeed; 
+  }
+  // Does a quick bus speed calculation for the last 2 seconds 
+  void RS485::calculateBusSpeed()
+  {
+	  if(millis() > busSpeedLastMillis + 2000)
+	  {
+		  busSpeedLastMillis = millis();
+		  busSpeed = (messagesReceivedCounter - busSpeedLastMessageReceivedCount) / 2;	  
+		  busSpeedLastMessageReceivedCount = messagesReceivedCounter;
+	  }
+  }
 
   // Does a random delay with a twist
   int RS485::randomRetryDelay()
@@ -454,5 +474,4 @@ bool RS485::update ()
 	  inQueue.init(inSize); // Incoming messages
 	  outQueue.init(outSize); // Outgoing messages
 	  confQueue.init(conSize); // Messages that need a confirmation
-
   }
