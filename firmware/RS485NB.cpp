@@ -20,33 +20,34 @@
 
 // allocate the requested buffer size
 void RS485::begin (byte boardId)
-  {
-  myId = boardId;
-  data_ = (byte *) malloc (bufferSize_);
-  reset ();
-  errorCount_ = 0;
-  pinMode(rtsPin, OUTPUT);
-  if(messageNotSentLED!=255) pinMode(messageNotSentLED, OUTPUT);
+{
+	myId = boardId;
+	data_ = (byte *) malloc (bufferSize_);
+	reset ();
+	errorCount_ = 0;
+	pinMode(rtsPin, OUTPUT);
+	if(messageNotSentLED!=255) pinMode(messageNotSentLED, OUTPUT);
+	if(errorEventLED!=255) pinMode(errorEventLED, OUTPUT);
 
-  } // end of RS485::begin
+} // end of RS485::begin
 
 // get rid of the buffer
 void RS485::stop ()
 {
-  reset ();
-  free (data_);
-  data_ = NULL;
+	reset ();
+	free (data_);
+	data_ = NULL;
 } // end of RS485::stop
 
 // called after an error to return to "not in a packet"
 void RS485::reset ()
-  {
-  haveSTX_ = false;
-  available_ = false;
-  inputPos_ = 0;
-  startTime_ = 0;
-  boardCastMessage = false;
-  } // end of RS485::reset
+{
+haveSTX_ = false;
+available_ = false;
+inputPos_ = 0;
+startTime_ = 0;
+boardCastMessage = false;
+} // end of RS485::reset
 
 // calculate 8-bit CRC
 byte RS485::crc8 (const byte *addr, byte len)
@@ -151,9 +152,11 @@ bool RS485::sendMsg (const byte * data, const byte length, const byte receiverId
   // CRC Byte
   sendComplemented (crc8 (messageData, length + MESSAGE_HEADER_SIZE ));
   fWaitCallback_(); // Waits for hardware serial sends to complete
-
+	
+  messageWasSent(); // Note that this is before the bus was made idle!
+	
   digitalWrite(rtsPin,LOW);
-  messagesSentCounter++;
+  
   
   if(allNet485Enabled)busMakeIdle();
 
@@ -163,7 +166,6 @@ bool RS485::sendMsg (const byte * data, const byte length, const byte receiverId
 
 // called periodically from main loop to process data and
 // assemble the finished packet in 'data_'
-
 // returns true if packet received.
 bool RS485::update ()
   {
@@ -198,12 +200,9 @@ bool RS485::update ()
           // check byte is in valid form (4 bits followed by 4 bits complemented)
           if ((inByte >> 4) != ((inByte & 0x0F) ^ 0x0F) )
             {
-      				errorCountNibble_++;
-      				errorCount_++;
-
-      				reset ();
-      				if(debug) Serial.print("N");
-      				break;  // bad character
+				errorHandler(ERROR_NIBBLE);
+   				reset ();
+   				break;  // bad character
             } // end if bad byte
 
           // convert back
@@ -227,96 +226,95 @@ bool RS485::update ()
             {
 				if(debug) Serial.print(":CRC");
 				if (crc8 (data_, inputPos_) != currentByte_)
-            {
-				reset ();
-				errorCountCRC_++;
-				errorCount_++;
-				break;  // bad crc
-            } // end of bad CRC
+				{
+					reset ();
+					errorHandler(ERROR_CRC);
+					break;  // bad crc
+				} // end of bad CRC
 
-			// Strangely (my lack of understanding :-) there is a spare byte on the end that causes a nibble error.
-			// Comment this line out if you are getting lots of errors.
-			// Required for Particle.io Photon
-			byte spareByte = fReadCallback_ (); // Extra byte read
+				// Strangely (my lack of understanding :-) there is a spare byte on the end that causes a nibble error.
+				// Comment this line out if you are getting lots of errors.
+				// Required for Particle.io Photon
+				byte spareByte = fReadCallback_ (); // Extra byte read
 
-			// Set properties
-			messageType = data_[0]; // Type of message
-			messageReceiverId = data_[1]; // Who the message is for
-			messageSenderId = data_[2]; // Who sent the message
-			messageSequenceNumber = (data_[03] << 24) | (data_[04] << 16) | (data_[05] << 8) | (data_[06]); // sequence number of this received message
-			messageRequiresConfirmation = data_[7];
+				// Set properties
+				messageType = data_[0]; // Type of message
+				messageReceiverId = data_[1]; // Who the message is for
+				messageSenderId = data_[2]; // Who sent the message
+				messageSequenceNumber = (data_[03] << 24) | (data_[04] << 16) | (data_[05] << 8) | (data_[06]); // sequence number of this received message
+				messageRequiresConfirmation = data_[7];
 
-			// Create a new AllMessage for the inQueue
-			AllMessage newAllMessage;
-			newAllMessage.Type = messageType;
-			newAllMessage.ReceiverId = messageReceiverId;
-			newAllMessage.SenderId = messageSenderId;
-			newAllMessage.Id = messageSequenceNumber;
-			newAllMessage.RequiresConfirmation = messageRequiresConfirmation;
+				// Create a new AllMessage for the inQueue
+				AllMessage newAllMessage;
+				newAllMessage.Type = messageType;
+				newAllMessage.ReceiverId = messageReceiverId;
+				newAllMessage.SenderId = messageSenderId;
+				newAllMessage.Id = messageSequenceNumber;
+				newAllMessage.RequiresConfirmation = messageRequiresConfirmation;
 
-			// Keep the time it arrived albeit for 0 to 64 seconds because this is a u int and not a u long
-			// Good enough for what we need without adding extra memory to the queues 
-			newAllMessage.WhenReceived = (int)millis();
+				// Keep the time it arrived albeit for 0 to 64 seconds because this is a u int and not a u long
+				// Good enough for what we need without adding extra memory to the queues 
+				newAllMessage.WhenReceived = (int)millis();
 
-			// Copy message data to the AllMessage.Data property
-			for (int i = 0; i < MESSAGE_DATA_SIZE ; i++) // inputPos_ held last byte count
-			{
-				newAllMessage.Data[i] = data_[i + MESSAGE_HEADER_SIZE];
-			}
+				// Copy message data to the AllMessage.Data property
+				for (int i = 0; i < MESSAGE_DATA_SIZE ; i++) // inputPos_ held last byte count
+				{
+					newAllMessage.Data[i] = data_[i + MESSAGE_HEADER_SIZE];
+				}
 			
-			// Push the message on the queue
-			inQueue.enqueue(newAllMessage);
-			messagesReceivedCounter++;
+				// Push the message on the queue
+				if(!inQueue.enqueue(newAllMessage)) errorHandler(ERROR_INQUEUEOVERFLOW);
+				
+				messageWasReceived();
 
-			// Send confirmation if required
-			if(messageRequiresConfirmation) sendConfirmation(newAllMessage);
+				// Send confirmation if required
+				if(messageRequiresConfirmation) sendConfirmation(newAllMessage);
 			
-            available_ = true;
+				available_ = true;
 
-            return true;  // show data ready
-            }  // end if have ETX already
+				return true;  // show data ready
+				}  // end if have ETX already
 
-          // keep adding if not full
-        if (inputPos_ < bufferSize_)
-  		  {
-			// Is it a boardCast? - messageType=0x00
-			if(inputPos_ == 0 && currentByte_ == BOARDCAST)
-			{
-  				boardCastMessage = true;
-			}
+				// keep adding if not full
+				if (inputPos_ < bufferSize_)
+				{
+				// Is it a boardCast? - messageType=0x00
+				if(inputPos_ == 0 && currentByte_ == MESSAGE_BOARDCAST)
+				{
+					boardCastMessage = true;
+				}
 
-			if(ignoreBoardcasts==true) boardCastMessage = false; // Even if it is a boardcast say it isn't so it gets ignored
+				if(ignoreBoardcasts==true) boardCastMessage = false; // Even if it is a boardcast say it isn't so it gets ignored
 
-			if(!boardCastMessage)
-			{
-  				// Check if it's for me and not a boardCast :-) - > Second byte is the receiver Id in the message
-  				if(inputPos_ == 1 && onlyReadMyMessages == true )
-  				{
-  					if(currentByte_ != myId)
-  					{
-  						reset();
-  						return false;
-  					}
-  				}
-			}
-		  // Add the data to the data_ array
-          data_ [inputPos_++] = currentByte_;
-    			if(debug)
-    			{
-    				Serial.print(" ");
-    				Serial.print(currentByte_,HEX);
-    			}
-  		  }
-  		  else
-        {
-        reset (); // overflow, start again
+				if(!boardCastMessage)
+				{
+					// Check if it's for me and not a boardCast :-) - > Second byte is the receiver Id in the message
+					if(inputPos_ == 1 && onlyReadMyMessages == true )
+					{
+  						if(currentByte_ != myId)
+  						{
+  							reset();
+  							return false;
+  						}
+					}
+				}
+				// Add the data to the data_ array
+				data_ [inputPos_++] = currentByte_;
+				if(debug)
+				{
+					Serial.print(" ");
+					Serial.print(currentByte_,HEX);
+				}
+				}
+				else
+				{
+				reset (); // overflow, start again
 
-        //Serial.println("Overflow Error");
-        errorCountOverflow_++;
-        errorCount_++;
-      }
+				//Serial.println("Overflow Error");
+				errorHandler(ERROR_BUFFEROVERFLOW);
+				}
 
-      break;
+				break;
 
       }  // end of switch
     }  // end of while incoming data
@@ -342,19 +340,20 @@ bool RS485::update ()
 		if(RS485::sendMsg (allMessage.Data, MESSAGE_DATA_SIZE , allMessage.ReceiverId,allMessage.Type,allMessage.RequiresConfirmation))
 		{
 			// It worked
-			digitalWrite(messageNotSentLED, LOW);	    
+			if(messageNotSentLED!=255) digitalWrite(messageNotSentLED, LOW);	    
 			RS485::update();
 		}
 		else
 		{
 			// Did not work - Put message back in the OutQueue
-			digitalWrite(messageNotSentLED, HIGH);
+			if(messageNotSentLED!=255) digitalWrite(messageNotSentLED, HIGH);
 			OutQueueEnqueue(allMessage);
 		    RS485::update();
 		}
 	  }
 	  
 	  calculateBusSpeed();
+  	  errorLEDHandler(LOW);
 
   }
 
@@ -364,7 +363,7 @@ bool RS485::update ()
   }
   void RS485::OutQueueEnqueue(AllMessage allMessage)
   {
-	  outQueue.enqueue(allMessage);
+	  if(!outQueue.enqueue(allMessage)) errorHandler(ERROR_OUTQUEUEOVERFLOW);
   }
 
   void RS485::allNet485Enable (byte busyPin)
@@ -458,7 +457,7 @@ bool RS485::update ()
   {	  
 	
 	//allMessage.SenderId == 0x11; // Basil
-	//byte confirmationMessage[] ="CONFIRMATION      ";
+	//byte confirmationMessage[] ="MESSAGE_CONFIRMATION      ";
 	////sendMsg(confirmationMessage,sizeof(confirmationMessage),allMessage.SenderId,CONFIRMATION,false);
 	//this->busBusyRetryCount = 100;
 	//sendMsg(confirmationMessage,MESSAGE_DATA_SIZE,0x11,MESSAGE,false);
@@ -475,3 +474,77 @@ bool RS485::update ()
 	  outQueue.init(outSize); // Outgoing messages
 	  confQueue.init(conSize); // Messages that need a confirmation
   }
+  
+  // Stuff to do when a message was sent
+  void RS485::messageWasSent()
+  {
+	  messagesReceivedCounter++;
+  } 
+  // Stuff to do when a message was received
+  void RS485::messageWasReceived()
+  {	  
+	  messagesSentCounter++;
+  }
+  
+  // Error handler
+  void RS485::errorHandler(int errorType)
+  { 
+	bool tempSerialOut = false;
+	errorCount_++;
+	errorLEDHandler(HIGH);
+	Serial.print(getErrorCount()); 		  
+	errorLastMillis_ = millis(); // Lust do this after above or errorLedHandler won't turn LED off when called
+	switch (errorType)
+	{
+
+		case ERROR_BUFFEROVERFLOW:
+			errorCountOverflow_++;				
+			if(tempSerialOut) Serial.println("ERROR_BUFFEROVERFLOW");
+		break;
+		  
+		case ERROR_CRC:
+			errorCountCRC_++;
+			if(tempSerialOut) Serial.println("ERROR_CRC");
+		break;
+		  
+		case ERROR_NIBBLE:
+			errorCountNibble_++;				
+			if(tempSerialOut) Serial.println("ERROR_NIBBLE");
+		break;
+		  
+		case ERROR_INQUEUEOVERFLOW:
+			errorCountInQueueOverflow_++;
+			if(tempSerialOut) Serial.println("ERROR_INQUEUEOVERFLOW");
+		break;
+		  
+		case ERROR_OUTQUEUEOVERFLOW:
+			errorCountOutQueueOverflow_++;
+			if(tempSerialOut) Serial.println("ERROR_OUTQUEUEOVERFLOW");
+		break;
+		  
+		case ERROR_CONFQUEUEOVERFLOW:
+			errorCountConfQueueOverflow_++;
+			if(tempSerialOut) Serial.println("ERROR_CONFQUEUEOVERFLOW");
+		break;
+		  
+		default:
+		break;
+	}	
+  }
+// Error LED handler
+void RS485::errorLEDHandler(bool state)
+{
+	if(errorEventLED==255) return ; // Don't do anything if the pin isn't set
+	
+	if(millis()+200 > errorLastMillis_ && state == LOW) // Asked to switch it off and 100ms has passed
+	{
+		digitalWrite(errorEventLED,LOW);
+		return;		
+	}
+
+	if(state==HIGH)
+	{
+		digitalWrite(errorEventLED,HIGH);
+	}
+}
+

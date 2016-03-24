@@ -95,11 +95,17 @@ class RS485
 
 	int randomRetryDelay(); // Retry sending message delay
 	void doDelayStuff(); // Stuff to do for a delay
+	void messageWasSent(); // Stuff to do when a message got sent
+	void messageWasReceived(); // Stuff to do when a message got sent
 
 	// Error counters
-	unsigned long errorCountNibble_;
-	unsigned long errorCountCRC_;
-	unsigned long errorCountOverflow_;
+	unsigned int errorCountNibble_;
+	unsigned int errorCountCRC_;
+	unsigned int errorCountOverflow_;
+	unsigned int errorCountInQueueOverflow_;
+	unsigned int errorCountOutQueueOverflow_;
+	unsigned int errorCountConfQueueOverflow_;
+	unsigned long errorLastMillis_;
 
 	// Sender properties
 	long sequenceNumber; // Incremented sequence number for checking that packets arrive in sequence
@@ -121,9 +127,20 @@ class RS485
 	  // Types of message
 	  enum
 	  {
-		  BOARDCAST,		// Message sent to all boards on the bus
-		  MESSAGE,		// For a specific Id
-		  CONFIRMATION	// Confirmation that message received
+		  MESSAGE_BOARDCAST,	// Message sent to all boards on the bus
+		  MESSAGE_MESSAGE,		// For a specific Id
+		  MESSAGE_CONFIRMATION	// Confirmation that message received
+	  };
+	  
+	  // Types of errors
+	  enum
+	  {
+		  ERROR_NIBBLE,				// Nibble Error occurred whilst reading data from the serial port
+		  ERROR_CRC,				// CRC Error occurred whilst reading data from the serial port
+		  ERROR_BUFFEROVERFLOW,		// Size of buffer was about to be exceeded before ETX-CRC was received
+		  ERROR_INQUEUEOVERFLOW,	// Input / receive queue ran out off space 
+		  ERROR_OUTQUEUEOVERFLOW,	// Output / send queue ran out of space
+		  ERROR_CONFQUEUEOVERFLOW	// Confirmation message queue ran out of space		  		  
 	  };
 
 	// constructor
@@ -203,12 +220,17 @@ class RS485
 
 	int rtsPin = 255; // RS485 RTS Pin. Pulled high when sending data on the bus.
 	int messageNotSentLED = 255; // RS485 RTS Pin. Pulled high when sending data on the bus.
+	int errorEventLED = 255; // RS485 RTS Pin. Pulled high when sending data on the bus.
 
 	void incrementErrorCount() {errorCount_ ++; }; // Means of incrementing the error counter in application for other errors
 	void decrementErrorCount() {errorCount_ --; }; // Means of decrementing the error counter in application
 	unsigned long getErrorCountNibble () const { return errorCountNibble_; }
 	unsigned long getErrorCountCRC () const { return errorCountCRC_; }
 	unsigned long getErrorCountOverflow () const { return errorCountOverflow_; }
+	unsigned long getErrorCountInQueueOverflow () const { return errorCountInQueueOverflow_; }
+	unsigned long getErrorCountOutQueueOverflow () const { return errorCountOutQueueOverflow_; }
+	unsigned long getErrorCountConfQueueOverflow () const { return errorCountConfQueueOverflow_; }
+		
 
 	// Enable / disable debug messages to serial port (USB)
 	// Doing it like this means that individual messages can be debugged instead of debugging the entire class
@@ -261,6 +283,8 @@ class RS485
 	// Better to handle retries in the application code as it can decide how important retrying is.
 	byte busBusyRetryCount = 5; // How many times send message is repeated before giving up and returning false - message not sent;
 
-
+	// For handling errors
+	void errorHandler(int);
+	void errorLEDHandler(bool);
 
   }; // end of class RS485
