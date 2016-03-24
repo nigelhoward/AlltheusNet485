@@ -493,7 +493,7 @@ bool RS485::update ()
 	errorCount_++;
 	errorLEDHandler(HIGH);
 	Serial.print(getErrorCount()); 		  
-	errorLastMillis_ = millis(); // Lust do this after above or errorLedHandler won't turn LED off when called
+	errorLastMillis_ = millis(); // Just do this after above or errorLedHandler won't turn LED off when called
 	switch (errorType)
 	{
 
