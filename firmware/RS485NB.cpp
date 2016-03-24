@@ -118,10 +118,9 @@ bool RS485::sendMsg (const byte * data, const byte length, const byte receiverId
 
   // Build an entire message buffer to use in send. Bit of a waste of bytes :-)
   // But a quick and easy adaption of existing code so CRC still works
-  byte messageData[MESSAGE_DATA_SIZE+MESSAGE_HEADER_SIZE];
+  byte messageData[MESSAGE_DATA_SIZE + MESSAGE_HEADER_SIZE];
 
   // Header
-  int headerSize = MESSAGE_HEADER_SIZE;
   messageData[0]=messageType;
   messageData[1]=receiverId;
   messageData[2]=myId;
@@ -137,22 +136,20 @@ bool RS485::sendMsg (const byte * data, const byte length, const byte receiverId
   // add given Data after the header
   for (byte i = 0; i < length; i++)
   {
-	messageData[headerSize+i] = data [i];
-	//if (allNet485Enabled) update();
+	messageData[i + MESSAGE_HEADER_SIZE] = data [i];
   }
 
   // Send the data
-  for (byte i = 0; i < (length + headerSize); i++)
+  for (byte i = 0; i < (length + MESSAGE_HEADER_SIZE); i++)
   {
 	  sendComplemented(messageData[i]);
-	  //if (allNet485Enabled) update();
   }
   
   // End of transmission byte
   fWriteCallback_ (ETX);  // ETX
 
   // CRC Byte
-  sendComplemented (crc8 (messageData, length + headerSize ));
+  sendComplemented (crc8 (messageData, length + MESSAGE_HEADER_SIZE ));
   fWaitCallback_(); // Waits for hardware serial sends to complete
 
   digitalWrite(rtsPin,LOW);
@@ -259,6 +256,12 @@ bool RS485::update ()
 			// Good enough for what we need without adding extra memory to the queues 
 			newAllMessage.WhenReceived = (int)millis();
 
+			// Copy message data to the AllMessage.Data property
+			for (int i = 0; i < MESSAGE_DATA_SIZE ; i++) // inputPos_ held last byte count
+			{
+				newAllMessage.Data[i] = data_[i + MESSAGE_HEADER_SIZE];
+			}
+			
 			// Push the message on the queue
 			inQueue.enqueue(newAllMessage);
 
