@@ -88,17 +88,15 @@ byte c;
 // put STX at start, ETX at end, and add CRC
 bool RS485::sendMsg (const byte * data, const byte length, const byte receiverId, const byte messageType, const bool messageRequiresConfirmation)
 {
-  // no callback? Can't send
-  if (fWriteCallback_ == NULL)
-    return false;
+	// no callback? Can't send
+	if (fWriteCallback_ == NULL)
+	return false;
 
   if(allNet485Enabled)
   {
     bool busWasStillBusy = true;
     for(int i = 0 ; i < busBusyRetryCount; i++)
     {
-		if (debug)	{Serial.print("i:"); Serial.println(i);}
-
 		if(!busIsBusy())
 		{
 			busWasStillBusy = false;
@@ -353,7 +351,7 @@ bool RS485::update ()
 	  }
 	  
 	  calculateBusSpeed();
-  	  errorLEDHandler(LOW);
+  	  errorLEDHandler(LOW); // Reset the error LED if appropriate
 
   }
 
@@ -536,7 +534,7 @@ void RS485::errorLEDHandler(bool state)
 {
 	if(errorEventLED==255) return ; // Don't do anything if the pin isn't set
 	
-	if(millis()+200 > errorLastMillis_ && state == LOW) // Asked to switch it off and 100ms has passed
+	if(millis() > (errorLastMillis_ + 100) && state == LOW) // Asked to switch it off and 100ms has passed
 	{
 		digitalWrite(errorEventLED,LOW);
 		return;		
