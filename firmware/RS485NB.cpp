@@ -443,7 +443,7 @@ bool RS485::update ()
   // Does a random microsecond delay
   void RS485::randomRetryMicrosDelay()
   {
-    unsigned long randomMicrosDelay = random(100,10000) + (50 * myId);
+    unsigned long randomMicrosDelay = random(280,10000) + (50 * myId);
 	busDelayMicros(randomMicrosDelay);
   }
   // Stuff that needs doing while a delay is delaying
