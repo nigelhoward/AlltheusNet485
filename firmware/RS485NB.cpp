@@ -434,11 +434,6 @@ bool RS485::update ()
   {
 	  if(millis() > busSpeedLastMillis + 2000)
 	  {
-		  Serial.print("busSpeedLastMessageReceivedCount");
-		  Serial.print(busSpeedLastMessageReceivedCount);
-		  Serial.print(" messRcv cnt:");
-		  Serial.println(messagesReceivedCounter);
-		  
 		  busSpeedLastMillis = millis();
 		  busSpeed = (messagesReceivedCounter - busSpeedLastMessageReceivedCount) / 2;	  
 		  busSpeedLastMessageReceivedCount = messagesReceivedCounter;
