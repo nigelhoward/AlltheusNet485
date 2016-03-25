@@ -97,6 +97,7 @@ bool RS485::sendMsg (const byte * data, const byte length, const byte receiverId
     bool busWasStillBusy = true;
     for(int i = 0 ; i < busBusyRetryCount; i++)
     {
+	    randomRetryMicrosDelay();
 		if(!busIsBusy())
 		{
 			busWasStillBusy = false;
@@ -405,19 +406,23 @@ bool RS485::update ()
       return false;
     }
   }
-  // Does a delay of approx the right number of microseconds whilst still reading the bus / serial port
-  void RS485::busDelay(int delayMS)
+  // Does a delay of approx number of microseconds whilst still reading the bus / serial port
+  void RS485::busDelayMicros(unsigned long microsDelayRequired)
   {
-	unsigned long microDelayRequired = 1000 * (unsigned long)delayMS;
-	unsigned long microStart = micros();
+	unsigned long microsStart = micros();
 
-	while (micros() < (microStart + microDelayRequired))
+	while (micros() < (microsStart + microsDelayRequired))
 	{
 		// Check if overflow (back to wero for micros() occured during this method
-		if (microStart > micros()) microStart = micros();  // Re-assign it so we don't get a super huge delay
+		if (microsStart > micros()) microsStart = micros();  // Re-assign it so we don't get a super huge delay
 		if(allNet485Enabled) update(); // Read any data that's on it's way in if AllNet is enabled
 	}
-
+  }
+  // As above but with milliseconds
+  void RS485::busDelayMillis(int millisDelayRequired)
+  {
+	  unsigned long microsDelayRequired = 1000 * (unsigned long)millisDelayRequired;
+	  busDelayMicros(microsDelayRequired);	  
   }
   
   int RS485::getBusSpeed()
@@ -435,20 +440,16 @@ bool RS485::update ()
 	  }
   }
 
-  // Does a random delay with a twist
-  int RS485::randomRetryDelay()
+  // Does a random microsecond delay
+  void RS485::randomRetryMicrosDelay()
   {
-    int randomDelay = random(10,100000) + (50 * myId);
-    for(int i = 0 ; randomDelay;i++)
-    {
-      delayMicroseconds(1);
-      doDelayStuff();
-    }
+    unsigned long randomMicrosDelay = random(100,10000) + (50 * myId);
+	busDelayMicros(randomMicrosDelay);
   }
   // Stuff that needs doing while a delay is delaying
   void RS485::doDelayStuff()
   {
-	  // Reading the bus would be good here
+	  update();
   }
 
   bool RS485::sendConfirmation(AllMessage allMessage)

@@ -93,7 +93,7 @@ class RS485
 	Added by Tb.
 	*/
 
-	int randomRetryDelay(); // Retry sending message delay
+	void randomRetryMicrosDelay(); // Retry sending message delay in microseconds
 	void doDelayStuff(); // Stuff to do for a delay
 	void messageWasSent(); // Stuff to do when a message got sent
 	void messageWasReceived(); // Stuff to do when a message got sent
@@ -263,7 +263,8 @@ class RS485
 	void busMakeBusy(); // Makes the bus busy by pulling the busBusyPin wire to zero
 	void busMakeIdle(); // Lets the bus go back up to being pulled hi by the resistor on the wire
 	bool busIsBusy(); // Reads the wire to see if it is high (idle) or low (busy)
-	void busDelay(int); // Bus delays for delaying by about the same MS but with bus updates / reads
+	void busDelayMicros(unsigned long); // Bus delays for delaying by about the same microseconds but with bus updates / reads
+	void busDelayMillis(int);			// As above but in milliseconds 
 	
 	int  getBusSpeed(); // Approx messages per second calculation
 
