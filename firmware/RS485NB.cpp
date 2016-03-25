@@ -155,11 +155,15 @@ bool RS485::sendMsg (const byte * data, const byte length, const byte receiverId
   messageData[1]=receiverId;
   messageData[2]=myId;
 
-  sequenceNumber++;
-  messageData[3]=(sequenceNumber >> 24) & 0xFF;
-  messageData[4]=(sequenceNumber >> 16) & 0xFF;
-  messageData[5]=(sequenceNumber >> 8) & 0xFF;
-  messageData[6]= sequenceNumber & 0xFF;
+  // Only generate new Id / sequence number if this is not a confirmation
+  if(messageType != MESSAGE_CONFIRMATION)
+  {  
+	  sequenceNumber++;
+	  messageData[3]=(sequenceNumber >> 24) & 0xFF;
+	  messageData[4]=(sequenceNumber >> 16) & 0xFF;
+	  messageData[5]=(sequenceNumber >> 8) & 0xFF;
+	  messageData[6]= sequenceNumber & 0xFF;
+  }
 
   messageData[7]= messageRequiresConfirmation;
 
@@ -291,14 +295,24 @@ bool RS485::update ()
 					newAllMessage.Data[i] = data_[i + MESSAGE_HEADER_SIZE];
 				}
 			
-				// Push the message on the queue
-				if(!inQueue.enqueue(newAllMessage)) errorHandler(ERROR_INQUEUEOVERFLOW);
+				// Is this a confirmation of a sent message?
+				if(newAllMessage.Type == MESSAGE_CONFIRMATION)
+				{	
+					// Treat it as a confirmation and process it
+					confirmationWasReceived(newAllMessage);
+				}
+				else
+				{
+					// Was a confirmation requested?
+					if(messageRequiresConfirmation) confirmationWasRequested(newAllMessage);					
+				}
+
+				// Push the message on the queue and make it available
+				if(!inQueue.enqueue(newAllMessage)) errorHandler(ERROR_INQUEUEOVERFLOW);	
+				
 				
 				messageWasReceived();
 
-				// Send confirmation if required
-				if(messageRequiresConfirmation) confirmationSend(newAllMessage);
-			
 				available_ = true;
 
 				return true;  // show data ready
@@ -371,10 +385,10 @@ bool RS485::update ()
 			// It worked
 			if(messageNotSentLED!=255) digitalWrite(messageNotSentLED, LOW);	    
 			RS485::update();
-			// Does it require a confirmation
-			if(allMessage.RequiresConfirmation)
+			// Does it require a confirmation?
+			if(allMessage.RequiresConfirmation )
 			{
-				confirmationWasRequested(allMessage);				
+				confirmationIsRequired(allMessage);
 			}
 		}
 		else
@@ -385,7 +399,7 @@ bool RS485::update ()
 		    RS485::update();
 		}
 	  }
-	  
+	  confQueueHandler();
 	  calculateBusSpeed();
   	  errorLEDHandler(LOW); // Reset the error LED if appropriate
 
@@ -494,12 +508,12 @@ bool RS485::update ()
 	  confQueue.init(conSize); // Messages that need a confirmation
   }
   
-  // Stuff to do when a message was sent
+  // Stuff to do when a message was sent by sendMessage
   void RS485::messageWasSent()
   {
 	  messagesSentCounter++;
   } 
-  // Stuff to do when a message was received
+  // Stuff to do when a message was received by update (receive message)
   void RS485::messageWasReceived()
   {	  
 	  messagesReceivedCounter++;
@@ -508,10 +522,9 @@ bool RS485::update ()
   // Error handler
   void RS485::errorHandler(int errorType)
   { 
-	bool tempSerialOut = false;
+	bool tempSerialOut = true;
 	errorCount_++;
-	errorLEDHandler(HIGH);
-	Serial.print(getErrorCount()); 		  
+	errorLEDHandler(HIGH); 		  
 	errorLastMillis_ = millis(); // Just do this after above or errorLedHandler won't turn LED off when called
 	switch (errorType)
 	{
@@ -545,7 +558,12 @@ bool RS485::update ()
 			errorCountConfQueueOverflow_++;
 			if(tempSerialOut) Serial.println("ERROR_CONFQUEUEOVERFLOW");
 		break;
-		  
+		
+		case ERROR_CONFRECEIPTTIMEOUT:
+			errorCountConfQueueOverflow_++;
+			if(tempSerialOut) Serial.println("ERROR_CONFRECEIPTTIMEOUT");
+		break;
+  
 		default:
 		break;
 	}	
@@ -569,30 +587,62 @@ void RS485::errorLEDHandler(bool state)
 
 // Confirmation methods
 
-// In response to a request for confirmation
-bool RS485::confirmationSend(AllMessage) 
-{
-	
-}
 // Scans the conf queue and re-sends or deletes messages
 void RS485::confQueueHandler() 
 {
+	// Get a message from the confirmation queue to look at
 	
+	if(confQueue.count() <1 ) return;
+	AllMessage allMessage = confQueue.dequeue();
+	
+	// Has it been hanging around too long!
+	// Time it arrived is a unsigned int cast from millis so max 64 seconds 
+	if( (int) millis() + confQueueTimeoutDelay > allMessage.WhenReceived)
+	{	
+		// Decrement it's retry counter
+		allMessage.RequiresConfirmation --;
+		if(allMessage.RequiresConfirmation) // Still not zero after decrementing it
+		{
+			OutQueueEnqueue(allMessage);
+			return;
+		}		
+		// Timeout for the last retry time - Error!
+		errorHandler(ERROR_CONFRECEIPTTIMEOUT);
+		return;
+	}
+	
+	// Stick it back on back of the confirmation queue
+	confQueue.enqueue(allMessage);
+	return;	
 }
-// When a confirmation is requested do these things
+// When a confirmation is required for message we sent
+void RS485::confirmationIsRequired(AllMessage allMessage)
+{
+	allMessage.RequiresConfirmation -- ; // Decrement the retry counter
+	allMessage.WhenReceived = millis(); // When the confirmation queue received it
+	confQueue.enqueue(allMessage); // Put the message on the confirmation queue to wait for confirmation to be received
+} 
+// When a confirmation of the message we received is requested do these things
 void RS485::confirmationWasRequested(AllMessage allMessage) 
 {
-	allMessage.RequiresConfirmation -- ; // Decrement the timeout try counter
-	allMessage.WhenReceived = millis(); // When the confirmation queue received it
-	confQueue.enqueue(allMessage); // Put the message on the confirmation buffer
+	// Send out a confirmation message to the board that sent us the message
+	// IF message is NOT a MESSAGE_BOARDCAST AND IS for for ME
+	
+	if(allMessage.Type != MESSAGE_BOARDCAST && allMessage.ReceiverId==myId)
+	{
+		allMessage.Type = MESSAGE_CONFIRMATION;
+		allMessage.ReceiverId = allMessage.SenderId; // Back to who sent it to us
+		allMessage.SenderId = myId; // From me
+		OutQueueEnqueue(allMessage);		
+	}
+	
 }
 // When a conf is received do these things
 void RS485::confirmationWasReceived(AllMessage allMessage) 
 {
-	if(confQueue.findByLongId(allMessage.Id))
+	if(!confQueue.deleteByLongId(allMessage.Id))
 	{
-		// We found it
-		// Delete it from the queue
+		// It could not be deleted -  What do we do now!
 	}
 }
 // All retries and the timeout has expired
@@ -605,4 +655,3 @@ bool RS485::confirmationTimedOutForMessage(AllMessage allMessage)
 {
 	
 }
-

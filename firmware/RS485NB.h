@@ -36,7 +36,7 @@ class AllMessage
 		byte SenderId;					// Who sent the message
 		byte ReceiverId;				// Who the message is for
 		byte Type;						// Type of message
-		byte RequiresConfirmation;		// Message needs a confirmation
+		byte RequiresConfirmation;		// Message requires a confirmation
 		unsigned int WhenReceived;		// When the message was received in millis but cast to an u int
 		byte Data[MESSAGE_DATA_SIZE];	// Data bytes not including the header size
 	};
@@ -141,7 +141,8 @@ class RS485
 		  ERROR_BUFFEROVERFLOW,		// Size of buffer was about to be exceeded before ETX-CRC was received
 		  ERROR_INQUEUEOVERFLOW,	// Input / receive queue ran out off space 
 		  ERROR_OUTQUEUEOVERFLOW,	// Output / send queue ran out of space
-		  ERROR_CONFQUEUEOVERFLOW	// Confirmation message queue ran out of space		  		  
+		  ERROR_CONFQUEUEOVERFLOW,	// Confirmation message queue ran out of space
+		  ERROR_CONFRECEIPTTIMEOUT	// Confirmation message wasn't received after retrying   		  
 	  };
 
 	// constructor
@@ -209,6 +210,8 @@ class RS485
 	int inQueueSize = 8;
 	int outQueueSize = 6;
 	int confQueueSize = 4;
+	
+	int confQueueTimeoutDelay = 500; // How long a message stays in the queue waiting for a confirmation before delete or re-transmit
 	
 	unsigned int messagesReceivedCounter = 0;
 	unsigned int messagesSentCounter = 0;
@@ -295,8 +298,8 @@ class RS485
 	void bootLightShow();
 	
 	// Confirmation methods
-	bool confirmationSend(AllMessage); // In response to a request for confirmation
 	void confQueueHandler(); // Scans the conf queue and re-sends or deletes messages
+	void confirmationIsRequired(AllMessage); // When a confirmation is required for message we sent
 	void confirmationWasRequested(AllMessage); // When a confirmation is requested do these things
 	void confirmationWasReceived(AllMessage); // When a conf is received do these things
 	void confirmationWasNotReceived(); // All retries and the timeout has expired
