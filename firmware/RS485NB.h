@@ -105,6 +105,7 @@ class RS485
 	unsigned int errorCountInQueueOverflow_;
 	unsigned int errorCountOutQueueOverflow_;
 	unsigned int errorCountConfQueueOverflow_;
+	unsigned int errorCountConfQueueTimeout_;
 	unsigned long errorLastMillis_;
 
 	// Sender properties
@@ -230,6 +231,7 @@ class RS485
 	unsigned long getErrorCountInQueueOverflow () const { return errorCountInQueueOverflow_; }
 	unsigned long getErrorCountOutQueueOverflow () const { return errorCountOutQueueOverflow_; }
 	unsigned long getErrorCountConfQueueOverflow () const { return errorCountConfQueueOverflow_; }
+	unsigned long getErrorCountConfQueueTimeout () const { return errorCountConfQueueTimeout_; }
 		
 
 	// Enable / disable debug messages to serial port (USB)
@@ -272,7 +274,6 @@ class RS485
 	// You must handle sending confirmations in your application code.
 	bool messageRequiresConfirmation = false; // Set if sender asked for a confirmation
 
-	bool sendConfirmation(AllMessage);
 
 	// Widens the gap either side of the data transmitted when bufferBusy wire goes low
 	// Helps reduce collisions but better kept low.
@@ -292,5 +293,14 @@ class RS485
 	void bootBusWaiter();
 	// Flashes the LEDS that have valid pin numbers
 	void bootLightShow();
+	
+	// Confirmation methods
+	bool confirmationSend(AllMessage); // In response to a request for confirmation
+	void confQueueHandler(); // Scans the conf queue and re-sends or deletes messages
+	void confirmationWasRequested(AllMessage); // When a confirmation is requested do these things
+	void confirmationWasReceived(AllMessage); // When a conf is received do these things
+	void confirmationWasNotReceived(); // All retries and the timeout has expired
+	bool confirmationTimedOutForMessage(AllMessage allMessage); // Check if the message has timed out / expired
+	
 
   }; // end of class RS485
