@@ -29,7 +29,7 @@ class AllQueue {
     // Queue (constructor).
     AllQueue ();
 
-	// initialise the size of the queue.
+	// initialize the size of the queue.
 	void init(const int s);
 
     // clear the queue (destructor).
@@ -63,13 +63,25 @@ class AllQueue {
 	bool resize(const int s);
 
 	// Find a queue object by it's Id if it is an int
-	T findByIntId(int);
+	int findByIntId(int);
 
 	// Find a queue object by it's Id if it is a long
-	T findByLongId(long);
+	int findByLongId(long);
 
 	// Find a queue object by it's Id if it is a byte
-	T findByByteId(byte);
+	int findByByteId(byte);
+	
+	// Return an object by it's queue position
+	T getByQueuePosition(int);
+	
+	// Delete by Long Id
+	bool deleteByLongId(unsigned long Id);
+	
+	// Delete by Int Id
+	bool deleteByIntId(unsigned int Id);
+	
+	// Delete by Byte Id
+	bool deleteByByteId(byte Id);
 
 	int resizeQueueBy = 1; // How many to add to existing size
 	int maxQueueSize = 1; // Max queue size
@@ -300,36 +312,112 @@ void AllQueue<T>::setPrinter (Print & p) {
 
 // Find an item by int T.Id
 template<typename T>
-T AllQueue<T>::findByIntId(int Id)
+int AllQueue<T>::findByIntId(int Id)
 {
 	for (int i = 0; i <= this->count(); i++)
 	{
 		T thing = contents[i];
-		if (thing.id == Id) return thing;
+		if (thing.Id == Id) return i;
 	}
+	return -9;
 }
 
 // Find an item by long T.Id
 template<typename T>
-T AllQueue<T>::findByLongId(long Id)
+int AllQueue<T>::findByLongId(long Id)
 {
 	for (int i = 0; i <= this->count(); i++)
 	{
 		T thing = contents[i];
-		if (thing.id == Id) return thing;
+		if (thing.Id == Id) return i;
 	}
+	return -9;
 }
-
 
 // Find an item by byte T.Id
 template<typename T>
-T AllQueue<T>::findByByteId(byte Id)
+int AllQueue<T>::findByByteId(byte Id)
 {
 	for (int i = 0; i <= this->count(); i++)
 	{
 		T thing = contents[i];
-		if (thing.id == Id) return thing;
+		if (thing.Id == Id) return i;
 	}
+	return -9;
+}
+
+// Get an item by queue position
+template<typename T>
+T AllQueue<T>::getByQueuePosition(int position)
+{
+	T thing = contents[position];
+	return thing;	
+}
+
+// Delete an item by LongIdId
+template<typename T>
+bool AllQueue<T>::deleteByLongId(unsigned long Id)
+{	
+	int countOfQueue = this->count();
+	
+	for (int i = 0; i < countOfQueue ; i++)
+	{
+		T thing = dequeue();
+		if(thing.Id == Id)
+		{
+			return true;
+		}
+		else
+		{
+			enqueue(thing);
+		}
+	}
+	
+	return false;
+}
+
+// Delete an item by IntId
+template<typename T>
+bool AllQueue<T>::deleteByIntId(unsigned int Id)
+{
+	int countOfQueue = this->count();
+	
+	for (int i = 0; i < countOfQueue ; i++)
+	{
+		T thing = dequeue();
+		if(thing.Id == Id)
+		{
+			return true;
+		}
+		else
+		{
+			enqueue(thing);
+		}
+	}
+	
+	return false;
+}
+
+// Delete an item by ByteId
+template<typename T>
+bool AllQueue<T>::deleteByByteId(byte Id)
+{
+	int countOfQueue = this->count();
+	
+	for (int i = 0; i < countOfQueue ; i++)
+	{
+		T thing = dequeue();
+		if(thing.Id == Id)
+		{
+			return true;
+		}
+		else
+		{
+			enqueue(thing);
+		}
+	}
+	
+	return false;
 }
 
 template<typename T>
