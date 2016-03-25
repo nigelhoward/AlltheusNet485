@@ -28,9 +28,39 @@ void RS485::begin (byte boardId)
 	pinMode(rtsPin, OUTPUT);
 	if(messageNotSentLED!=255) pinMode(messageNotSentLED, OUTPUT);
 	if(errorEventLED!=255) pinMode(errorEventLED, OUTPUT);
+	bootLightShow();
+	bootBusWaiter();
 
 } // end of RS485::begin
 
+// When a board starts it waits until it has seen 10 busBusy cycles or some milliseconds before starting
+void RS485::bootBusWaiter()
+{
+	unsigned long now = millis();
+	int busIsBusyCounter = 0;
+	
+	while(busIsBusyCounter < 10)
+	{
+		if(busIsBusy())
+		{
+			busIsBusyCounter++;
+		}		
+		// Or break out if timer lapsed
+		if(millis()> now + 200) break;
+	}	
+}
+// Flashes the LEDS that have valid pin numbers
+void RS485::bootLightShow()
+{	
+	for (int i=0; i < 10 ;i++)
+	{
+		if(messageNotSentLED!=255) digitalWrite(messageNotSentLED,!digitalRead(messageNotSentLED));
+		if(errorEventLED!=255) digitalWrite(errorEventLED,!digitalRead(errorEventLED));
+		delay(200);
+	}
+	if(messageNotSentLED!=255) digitalWrite(messageNotSentLED,LOW);
+	if(errorEventLED!=255) digitalWrite(errorEventLED,LOW);
+}
 // get rid of the buffer
 void RS485::stop ()
 {

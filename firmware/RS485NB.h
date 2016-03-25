@@ -287,5 +287,10 @@ class RS485
 	// For handling errors
 	void errorHandler(int);
 	void errorLEDHandler(bool);
+	
+	// When a board starts it waits until it has seen busBusy for some cycles or a some millis before starting
+	void bootBusWaiter();
+	// Flashes the LEDS that have valid pin numbers
+	void bootLightShow();
 
   }; // end of class RS485
