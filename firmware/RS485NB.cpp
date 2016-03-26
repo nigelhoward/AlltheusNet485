@@ -14,7 +14,7 @@
 
  */
 
-// Version P2.4 - By TopBanana 23-03-2016
+ // Version P3.1 - By TopBanana 26-03-2016
 
 #include "RS485NB.h"
 
@@ -116,7 +116,7 @@ byte c;
 
 // send a message of "length" bytes (max 255) to other end
 // put STX at start, ETX at end, and add CRC
-bool RS485::sendMsg (const byte * data, const byte length, const byte receiverId, const byte messageType, const bool messageRequiresConfirmation, unsigned long givenMessageId)
+bool RS485::sendMsg (const byte * data, const byte length, const byte receiverId, const byte messageType, const byte messageRequiresConfirmation, unsigned long givenMessageId)
 {
 	// no callback? Can't send
 	if (fWriteCallback_ == NULL)
@@ -610,20 +610,38 @@ void RS485::confQueueHandler()
 	AllMessage allMessage = confQueue.dequeue();
 	
 	// Has it been hanging around too long!
-	// Time it arrived is a unsigned int cast from millis so max 64 seconds 
-	if( millis()  > allMessage.WhenReceived + confQueueTimeoutDelay)
-	{	
-		// Decrement it's retry counter
-		allMessage.RequiresConfirmation --;
-		if(allMessage.RequiresConfirmation > 0) // Still not zero after decrementing it
-		{
-			OutQueueEnqueue(allMessage);
-			return;
-		}		
-		// Timeout for the last retry time - Error!
-		errorHandler(ERROR_CONFRECEIPTTIMEOUT);
+	if( millis()  < allMessage.WhenReceived + confQueueTimeoutDelay)
+	{
+		confQueue.enqueue(allMessage);
 		return;
 	}
+		
+	// Safety just in case number is too large
+	if(allMessage.RequiresConfirmation>10) allMessage.RequiresConfirmation = 10;
+		
+	if(allMessage.RequiresConfirmation > 0) // Still not zero after decrementing it
+	{
+		//Serial.println();
+		//Serial.print("Conf countdown Id:");
+		//Serial.println(allMessage.Id);
+		//Serial.print(" / ");			
+		//Serial.println(allMessage.RequiresConfirmation);
+
+		// Queue it for sending again
+		OutQueueEnqueue(allMessage);
+			
+		// Decrement it's retry counter
+		allMessage.RequiresConfirmation --;
+		
+		// Put it back in conf queue
+		confQueue.enqueue(allMessage);
+		
+		return;
+	}		
+	// Timeout for the last retry time - Error!
+	errorHandler(ERROR_CONFRECEIPTTIMEOUT);
+	return;
+
 	
 	// Stick it back on back of the confirmation queue
 	confQueue.enqueue(allMessage);
@@ -632,7 +650,6 @@ void RS485::confQueueHandler()
 // When a confirmation is required for message we sent
 void RS485::confirmationIsRequired(AllMessage allMessage)
 {
-	allMessage.RequiresConfirmation -- ; // Decrement the retry counter
 	allMessage.WhenReceived = millis(); // When the confirmation queue received it
 	if(!confQueue.enqueue(allMessage)) errorHandler(ERROR_CONFQUEUEOVERFLOW); // Put the message on the confirmation queue to wait for confirmation to be received
 } 

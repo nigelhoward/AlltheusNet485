@@ -13,7 +13,7 @@
  Hardware serial performed much better than software serial for me. 250000 Baud was about the max for the serial port.
  If you build a test receiver to analyze above then make sure it doesn't do too much Serial.Print to a slow serial port. This will miss messages.
 
- Version P2.4 - By TopBanana 23-03-2016
+ Version P3.1 - By TopBanana 26-03-2016
 
 */
 
@@ -181,7 +181,7 @@ class RS485
     // receiverId - Who the message is for
     // messageType - Distinguishing between message types - reserved type of 0X00 for a BoardCast
     // messageRequiresConfirmation - Please let me know you got my message! Library does not respond so handle this in your application code
-    bool sendMsg (const byte * data, const byte length, const byte receiverId, const byte messageType, const bool messageRequiresConfirmation, unsigned long givenMessageId);
+    bool sendMsg (const byte * data, const byte length, const byte receiverId, const byte messageType, const byte messageRequiresConfirmation, unsigned long givenMessageId);
 
     // returns true if packet available
     bool available () const { return available_; };
@@ -277,9 +277,8 @@ class RS485
 	
 	int  getBusSpeed(); // Approx messages per second calculation
 
-	// Confirmation flag set by the message receiving code. Class does not send confirmations.
-	// You must handle sending confirmations in your application code.
-	bool messageRequiresConfirmation = false; // Set if sender asked for a confirmation
+	// Confirmation byte set by the message sending code. Bigger the number the more retries it does
+	byte messageRequiresConfirmation = 0; // Set if sender asked for a confirmation
 
 
 	// Widens the gap either side of the data transmitted when bufferBusy wire goes low
