@@ -116,84 +116,107 @@ byte c;
 
 // send a message of "length" bytes (max 255) to other end
 // put STX at start, ETX at end, and add CRC
-bool RS485::sendMsg (const byte * data, const byte length, const byte receiverId, const byte messageType, const bool messageRequiresConfirmation)
+bool RS485::sendMsg (const byte * data, const byte length, const byte receiverId, const byte messageType, const bool messageRequiresConfirmation, unsigned long givenMessageId)
 {
 	// no callback? Can't send
 	if (fWriteCallback_ == NULL)
 	return false;
 
-  if(allNet485Enabled)
-  {
-    bool busWasStillBusy = true;
-    for(int i = 0 ; i < busBusyRetryCount; i++)
-    {
-	    randomRetryMicrosDelay();
-		if(!busIsBusy())
+	if(allNet485Enabled)
+	{
+		bool busWasStillBusy = true;
+		for(int i = 0 ; i < busBusyRetryCount; i++)
 		{
-			busWasStillBusy = false;
-			i=busBusyRetryCount + 1;
+			randomRetryMicrosDelay();
+			if(!busIsBusy())
+			{
+				busWasStillBusy = false;
+				i=busBusyRetryCount + 1;
+			}
 		}
-    }
-    if(busWasStillBusy)
-    {
-		if (debug) Serial.println("busStillBusy");
-		return false; // While loop finished after all retries
-    }
-  }
+		if(busWasStillBusy)
+		{
+			if (debug) Serial.println("busStillBusy");
+			return false; // While loop finished after all retries
+		}
+	}
 
-  if(allNet485Enabled) busMakeBusy();
-  digitalWrite(rtsPin,HIGH);
+	if(allNet485Enabled) busMakeBusy();
+	digitalWrite(rtsPin,HIGH);
 
-  fWriteCallback_ (STX);  // STX
+	fWriteCallback_ (STX);  // STX
 
-  // Build an entire message buffer to use in send. Bit of a waste of bytes :-)
-  // But a quick and easy adaption of existing code so CRC still works
-  byte messageData[MESSAGE_DATA_SIZE + MESSAGE_HEADER_SIZE];
-
-  // Header
-  messageData[0]=messageType;
-  messageData[1]=receiverId;
-  messageData[2]=myId;
-
-  // Only generate new Id / sequence number if this is not a confirmation
-  if(messageType != MESSAGE_CONFIRMATION)
-  {  
-	  sequenceNumber++;
-	  messageData[3]=(sequenceNumber >> 24) & 0xFF;
-	  messageData[4]=(sequenceNumber >> 16) & 0xFF;
-	  messageData[5]=(sequenceNumber >> 8) & 0xFF;
-	  messageData[6]= sequenceNumber & 0xFF;
-  }
-
-  messageData[7]= messageRequiresConfirmation;
-
-  // add given Data after the header
-  for (byte i = 0; i < length; i++)
-  {
-	messageData[i + MESSAGE_HEADER_SIZE] = data [i];
-  }
-
-  // Send the data
-  for (byte i = 0; i < (length + MESSAGE_HEADER_SIZE); i++)
-  {
-	  sendComplemented(messageData[i]);
-  }
-  
-  // End of transmission byte
-  fWriteCallback_ (ETX);  // ETX
-
-  // CRC Byte
-  sendComplemented (crc8 (messageData, length + MESSAGE_HEADER_SIZE ));
-  fWaitCallback_(); // Waits for hardware serial sends to complete
+	// Build an entire message buffer to use in send. Bit of a waste of bytes :-)
+	// But a quick and easy adaption of existing code so CRC still works
+	byte messagePacket[MESSAGE_DATA_SIZE + MESSAGE_HEADER_SIZE];
 	
-  messageWasSent(); // Note that this is before the bus was made idle!
+	// And an AllMessage
+	AllMessage allMessage;
 	
-  digitalWrite(rtsPin,LOW);
-  
-  
-  if(allNet485Enabled)busMakeIdle();
+	// Header
+	messagePacket[0]=messageType;
+	messagePacket[1]=receiverId;
+	messagePacket[2]=myId;
+	
+	allMessage.Type = messageType;
+	allMessage.ReceiverId = receiverId;
+	allMessage.SenderId=  myId;
 
-  return true;
+	unsigned long sendMessageId = 0;
+	
+	// Only generate new Id / sequence number if this is not a confirmation
+	if(messageType != MESSAGE_CONFIRMATION)
+	{
+		sequenceNumber++;
+		sendMessageId = sequenceNumber;
+	}
+	else
+	{
+		sendMessageId = givenMessageId;
+	}
+ 	
+	allMessage.Id = sendMessageId;
+	
+	messagePacket[3]=(sendMessageId >> 24) & 0xFF;
+	messagePacket[4]=(sendMessageId >> 16) & 0xFF;
+	messagePacket[5]=(sendMessageId >> 8) & 0xFF;
+	messagePacket[6]= sendMessageId & 0xFF;
+  
+	messagePacket[7]= messageRequiresConfirmation;
+	allMessage.RequiresConfirmation = messageRequiresConfirmation;
+	
+	// add given Data after the header
+	for (byte i = 0; i < length; i++)
+	{
+		messagePacket[i + MESSAGE_HEADER_SIZE] = data [i];
+		allMessage.Data[i] = data[i];
+	}
+
+	// Send the data
+	for (byte i = 0; i < (length + MESSAGE_HEADER_SIZE); i++)
+	{
+		sendComplemented(messagePacket[i]);
+	}
+  
+	// End of transmission byte
+	fWriteCallback_ (ETX);  // ETX
+
+	// CRC Byte
+	sendComplemented (crc8 (messagePacket, length + MESSAGE_HEADER_SIZE ));
+	fWaitCallback_(); // Waits for hardware serial sends to complete
+	
+	messageWasSent(); // Note that this is before the bus was made idle!
+	// Does it require a confirmation?
+	if(allMessage.RequiresConfirmation )
+	{
+		confirmationIsRequired(allMessage);
+	}
+	
+	digitalWrite(rtsPin,LOW); 
+  
+	if(allNet485Enabled)busMakeIdle();
+
+	return true;
 
 }  // end of RS485::sendMsg
 
@@ -267,7 +290,8 @@ bool RS485::update ()
 
 				// Strangely (my lack of understanding :-) there is a spare byte on the end that causes a nibble error.
 				// Comment this line out if you are getting lots of errors.
-				// Required for Particle.io Photon
+				// Required for Particle.io Photon & Arduino
+				
 				byte spareByte = fReadCallback_ (); // Extra byte read
 
 				// Set properties
@@ -285,15 +309,20 @@ bool RS485::update ()
 				newAllMessage.Id = messageSequenceNumber;
 				newAllMessage.RequiresConfirmation = messageRequiresConfirmation;
 
-				// Keep the time it arrived albeit for 0 to 64 seconds because this is a u int and not a u long
-				// Good enough for what we need without adding extra memory to the queues 
-				newAllMessage.WhenReceived = (int)millis();
+				// Keep the time it arrived
+				newAllMessage.WhenReceived = millis();
 
 				// Copy message data to the AllMessage.Data property
 				for (int i = 0; i < MESSAGE_DATA_SIZE ; i++) // inputPos_ held last byte count
 				{
 					newAllMessage.Data[i] = data_[i + MESSAGE_HEADER_SIZE];
 				}
+				
+				// Check filters - No messages pass this point if filters are applied
+				if(messageType == MESSAGE_BOARDCAST & ignoreBoardcasts == true) return false; // Boardcast and I'm ignoring them
+				if(messageReceiverId != myId && onlyReadMyMessages == true) return false; // Not for me!
+				// End filter
+				
 			
 				// Is this a confirmation of a sent message?
 				if(newAllMessage.Type == MESSAGE_CONFIRMATION)
@@ -301,11 +330,9 @@ bool RS485::update ()
 					// Treat it as a confirmation and process it
 					confirmationWasReceived(newAllMessage);
 				}
-				else
-				{
-					// Was a confirmation requested?
-					if(messageRequiresConfirmation) confirmationWasRequested(newAllMessage);					
-				}
+
+				// Was a confirmation requested?
+				if(messageRequiresConfirmation) confirmationWasRequested(newAllMessage);					
 
 				// Push the message on the queue and make it available
 				if(!inQueue.enqueue(newAllMessage)) errorHandler(ERROR_INQUEUEOVERFLOW);	
@@ -321,40 +348,17 @@ bool RS485::update ()
 				// keep adding if not full
 				if (inputPos_ < bufferSize_)
 				{
-				// Is it a boardCast? - messageType=0x00
-				if(inputPos_ == 0 && currentByte_ == MESSAGE_BOARDCAST)
-				{
-					boardCastMessage = true;
-				}
+					
+					// Add the data to the data_ array
+					data_ [inputPos_++] = currentByte_;
 
-				if(ignoreBoardcasts==true) boardCastMessage = false; // Even if it is a boardcast say it isn't so it gets ignored
-
-				if(!boardCastMessage)
-				{
-					// Check if it's for me and not a boardCast :-) - > Second byte is the receiver Id in the message
-					if(inputPos_ == 1 && onlyReadMyMessages == true )
-					{
-  						if(currentByte_ != myId)
-  						{
-  							reset();
-  							return false;
-  						}
-					}
-				}
-				// Add the data to the data_ array
-				data_ [inputPos_++] = currentByte_;
-				if(debug)
-				{
-					Serial.print(" ");
-					Serial.print(currentByte_,HEX);
-				}
 				}
 				else
 				{
-				reset (); // overflow, start again
+					reset (); // overflow, start again
 
-				//Serial.println("Overflow Error");
-				errorHandler(ERROR_BUFFEROVERFLOW);
+					//Serial.println("Overflow Error");
+					errorHandler(ERROR_BUFFEROVERFLOW);
 				}
 
 				break;
@@ -380,16 +384,11 @@ bool RS485::update ()
 	  if(outQueue.count()>0)
 	  {
 		AllMessage allMessage = outQueue.dequeue();
-		if(RS485::sendMsg (allMessage.Data, MESSAGE_DATA_SIZE , allMessage.ReceiverId,allMessage.Type,allMessage.RequiresConfirmation))
+		if(RS485::sendMsg (allMessage.Data, MESSAGE_DATA_SIZE , allMessage.ReceiverId,allMessage.Type,allMessage.RequiresConfirmation,allMessage.Id))
 		{
 			// It worked
 			if(messageNotSentLED!=255) digitalWrite(messageNotSentLED, LOW);	    
 			RS485::update();
-			// Does it require a confirmation?
-			if(allMessage.RequiresConfirmation )
-			{
-				confirmationIsRequired(allMessage);
-			}
 		}
 		else
 		{
@@ -522,50 +521,63 @@ bool RS485::update ()
   // Error handler
   void RS485::errorHandler(int errorType)
   { 
-	bool tempSerialOut = true;
 	errorCount_++;
 	errorLEDHandler(HIGH); 		  
 	errorLastMillis_ = millis(); // Just do this after above or errorLedHandler won't turn LED off when called
+	
+	if(debugErrorsToSerial)
+	{
+		Serial.println();
+		Serial.print(getErrorCount());
+		Serial.print(":");		
+	}
 	switch (errorType)
 	{
-
 		case ERROR_BUFFEROVERFLOW:
 			errorCountOverflow_++;				
-			if(tempSerialOut) Serial.println("ERROR_BUFFEROVERFLOW");
+			if(debugErrorsToSerial) Serial.print("ERROR_BUFFEROVERFLOW");
 		break;
 		  
 		case ERROR_CRC:
 			errorCountCRC_++;
-			if(tempSerialOut) Serial.println("ERROR_CRC");
+			if(debugErrorsToSerial) Serial.print("ERROR_CRC");
 		break;
 		  
 		case ERROR_NIBBLE:
 			errorCountNibble_++;				
-			if(tempSerialOut) Serial.println("ERROR_NIBBLE");
+			if(debugErrorsToSerial) Serial.print("ERROR_NIBBLE");
 		break;
 		  
 		case ERROR_INQUEUEOVERFLOW:
 			errorCountInQueueOverflow_++;
-			if(tempSerialOut) Serial.println("ERROR_INQUEUEOVERFLOW");
+			if(debugErrorsToSerial) Serial.print("ERROR_INQUEUEOVERFLOW");
 		break;
 		  
 		case ERROR_OUTQUEUEOVERFLOW:
 			errorCountOutQueueOverflow_++;
-			if(tempSerialOut) Serial.println("ERROR_OUTQUEUEOVERFLOW");
+			if(debugErrorsToSerial) Serial.print("ERROR_OUTQUEUEOVERFLOW");
 		break;
 		  
 		case ERROR_CONFQUEUEOVERFLOW:
 			errorCountConfQueueOverflow_++;
-			if(tempSerialOut) Serial.println("ERROR_CONFQUEUEOVERFLOW");
+			if(debugErrorsToSerial) Serial.print("ERROR_CONFQUEUEOVERFLOW");
 		break;
 		
 		case ERROR_CONFRECEIPTTIMEOUT:
 			errorCountConfQueueOverflow_++;
-			if(tempSerialOut) Serial.println("ERROR_CONFRECEIPTTIMEOUT");
+			if(debugErrorsToSerial) Serial.print("ERROR_CONFRECEIPTTIMEOUT");
 		break;
-  
+		
+		case ERROR_CONFMESSAGENOTFOUND:
+			if(debugErrorsToSerial) Serial.print("ERROR_CONFMESSAGENOTFOUND");
+		break;
+		
 		default:
 		break;
+		if(debugErrorsToSerial)
+		{
+			Serial.println();
+		}
 	}	
   }
 // Error LED handler
@@ -591,17 +603,19 @@ void RS485::errorLEDHandler(bool state)
 void RS485::confQueueHandler() 
 {
 	// Get a message from the confirmation queue to look at
+	// return;
 	
 	if(confQueue.count() <1 ) return;
+	
 	AllMessage allMessage = confQueue.dequeue();
 	
 	// Has it been hanging around too long!
 	// Time it arrived is a unsigned int cast from millis so max 64 seconds 
-	if( (int) millis() + confQueueTimeoutDelay > allMessage.WhenReceived)
+	if( millis()  > allMessage.WhenReceived + confQueueTimeoutDelay)
 	{	
 		// Decrement it's retry counter
 		allMessage.RequiresConfirmation --;
-		if(allMessage.RequiresConfirmation) // Still not zero after decrementing it
+		if(allMessage.RequiresConfirmation > 0) // Still not zero after decrementing it
 		{
 			OutQueueEnqueue(allMessage);
 			return;
@@ -620,7 +634,7 @@ void RS485::confirmationIsRequired(AllMessage allMessage)
 {
 	allMessage.RequiresConfirmation -- ; // Decrement the retry counter
 	allMessage.WhenReceived = millis(); // When the confirmation queue received it
-	confQueue.enqueue(allMessage); // Put the message on the confirmation queue to wait for confirmation to be received
+	if(!confQueue.enqueue(allMessage)) errorHandler(ERROR_CONFQUEUEOVERFLOW); // Put the message on the confirmation queue to wait for confirmation to be received
 } 
 // When a confirmation of the message we received is requested do these things
 void RS485::confirmationWasRequested(AllMessage allMessage) 
@@ -633,6 +647,7 @@ void RS485::confirmationWasRequested(AllMessage allMessage)
 		allMessage.Type = MESSAGE_CONFIRMATION;
 		allMessage.ReceiverId = allMessage.SenderId; // Back to who sent it to us
 		allMessage.SenderId = myId; // From me
+		allMessage.RequiresConfirmation = 0;
 		OutQueueEnqueue(allMessage);		
 	}
 	
@@ -640,10 +655,55 @@ void RS485::confirmationWasRequested(AllMessage allMessage)
 // When a conf is received do these things
 void RS485::confirmationWasReceived(AllMessage allMessage) 
 {
+	if(allMessage.ReceiverId!=myId) return; // Not for me so don't care!
+	//int confQSize = confQueue.count();
+//
+	//Serial.println("");
+	//Serial.print("Conf q contents:");
+	//Serial.println(confQSize);
+	//Serial.println("========================");
+//
+	//for (int i = 0; i<confQSize; i++)
+	//{		
+		//AllMessage myMessage ;
+		//myMessage = confQueue.dequeue();
+		//Serial.print("Id:");
+		//Serial.print(myMessage.Id);
+		//Serial.print(" From:");
+		//Serial.print(myMessage.SenderId,HEX);
+		//Serial.print(" Time:");
+		//Serial.print(myMessage.WhenReceived);
+		//
+		//Serial.print(" '");
+//
+		//for (int i = 0; i < 16; i++)
+		//{
+			//if(myMessage.Data[i] > 31 && myMessage.Data[i] < 127)
+			//{
+				//Serial.print((char)myMessage.Data[i]);
+			//}
+			//else
+			//{
+				//Serial.print("_");
+			//}
+				//
+			////if(allMessage.Data[i]< 0x10) Serial.print("0");
+			////Serial.print(allMessage.Data[i],HEX);
+			////Serial.print(" ");
+		//}
+		//Serial.println("'");
+//
+	//}	
+	//Serial.println("========================");
+	
+	//Serial.println("looking for Id:");
+	//Serial.println(allMessage.Id);
 	if(!confQueue.deleteByLongId(allMessage.Id))
 	{
 		// It could not be deleted -  What do we do now!
+		errorHandler(ERROR_CONFMESSAGENOTFOUND);
 	}
+	
 }
 // All retries and the timeout has expired
 void RS485::confirmationWasNotReceived() 

@@ -37,7 +37,7 @@ class AllMessage
 		byte ReceiverId;				// Who the message is for
 		byte Type;						// Type of message
 		byte RequiresConfirmation;		// Message requires a confirmation
-		unsigned int WhenReceived;		// When the message was received in millis but cast to an u int
+		unsigned long WhenReceived;		// When the message was received in millis
 		byte Data[MESSAGE_DATA_SIZE];	// Data bytes not including the header size
 	};
 
@@ -113,7 +113,8 @@ class RS485
 	bool boardCastMessage = false; // Some messages are sent for everyone to see
 
 	// Debug
-	bool debug;
+	bool debug = false;
+
 
 	// Board Id
 	byte myId = 0xFF; // Aka senderId
@@ -142,7 +143,8 @@ class RS485
 		  ERROR_INQUEUEOVERFLOW,	// Input / receive queue ran out off space 
 		  ERROR_OUTQUEUEOVERFLOW,	// Output / send queue ran out of space
 		  ERROR_CONFQUEUEOVERFLOW,	// Confirmation message queue ran out of space
-		  ERROR_CONFRECEIPTTIMEOUT	// Confirmation message wasn't received after retrying   		  
+		  ERROR_CONFRECEIPTTIMEOUT,	// Confirmation message wasn't received after retrying
+		  ERROR_CONFMESSAGENOTFOUND	// Confirmation message wasn't found in local confirmation queue   		  
 	  };
 
 	// constructor
@@ -179,7 +181,7 @@ class RS485
     // receiverId - Who the message is for
     // messageType - Distinguishing between message types - reserved type of 0X00 for a BoardCast
     // messageRequiresConfirmation - Please let me know you got my message! Library does not respond so handle this in your application code
-    bool sendMsg (const byte * data, const byte length, const byte receiverId, const byte messageType, const bool messageRequiresConfirmation);
+    bool sendMsg (const byte * data, const byte length, const byte receiverId, const byte messageType, const bool messageRequiresConfirmation, unsigned long givenMessageId);
 
     // returns true if packet available
     bool available () const { return available_; };
@@ -201,15 +203,17 @@ class RS485
    Additional public properties and methods
    Added by Tb.
 */
-
+	// Output any errors to the default serial port
+	bool debugErrorsToSerial = false;
+	
 	// Queues for messages
 	AllQueue <AllMessage> inQueue;
 	AllQueue <AllMessage> outQueue;
 	AllQueue <AllMessage> confQueue;
 
-	int inQueueSize = 8;
-	int outQueueSize = 6;
-	int confQueueSize = 4;
+	int inQueueSize = 2;
+	int outQueueSize = 2;
+	int confQueueSize = 2;
 	
 	int confQueueTimeoutDelay = 500; // How long a message stays in the queue waiting for a confirmation before delete or re-transmit
 	
