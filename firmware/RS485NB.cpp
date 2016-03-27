@@ -323,6 +323,16 @@ bool RS485::update ()
 				if(messageReceiverId != myId && onlyReadMyMessages == true) return false; // Not for me!
 				// End filter
 				
+				// TEST Drop random message //
+				//randomSeed(analogRead(6));
+				//if(random(0,4)==3)
+				//{
+					//Serial.println();
+					//Serial.print("TEST msg drop Id:");
+					//Serial.println(newAllMessage.Id);
+					//return false;
+				//}
+				// END Test //			
 			
 				// Is this a confirmation of a sent message?
 				if(newAllMessage.Type == MESSAGE_CONFIRMATION)
@@ -605,47 +615,60 @@ void RS485::confQueueHandler()
 	// Get a message from the confirmation queue to look at
 	// return;
 	
-	if(confQueue.count() <1 ) return;
+	if(confQueue.count() <1 )
+	{
+		Serial.print("Nothing in queue");
+		return;
+	}
+		 
 	
 	AllMessage allMessage = confQueue.dequeue();
 	
-	// Has it been hanging around too long!
-	if( millis()  < allMessage.WhenReceived + confQueueTimeoutDelay)
+	// Has it been hanging around long enough
+	if( millis() - allMessage.WhenReceived > confQueueTimeoutDelay);
 	{
+		
+		// Safety just in case number is too large
+		if(allMessage.RequiresConfirmation>10) allMessage.RequiresConfirmation = 10;	
+		if(allMessage.RequiresConfirmation > 0) // Not last try
+		{
+			Serial.println();
+			Serial.print("Conf countdown Id:");
+			Serial.println(allMessage.Id);
+			Serial.print(" / ");
+			Serial.println(allMessage.RequiresConfirmation);
+
+			// Queue it for sending again
+			OutQueueEnqueue(allMessage);
+		
+			// Decrement it's retry counter
+			allMessage.RequiresConfirmation --;
+		
+			// Put it back in conf queue
+			confQueue.enqueue(allMessage);
+		
+			return;
+		}
+
+		// Timeout for the last retry time - Error!
+		errorHandler(ERROR_CONFRECEIPTTIMEOUT);
+		return;
+
+	}
+	else // Long enough in queue
+	{
+			
+		Serial.println();
+		Serial.print("Message not enough Id:");
+		Serial.println(allMessage.Id);
+			
 		confQueue.enqueue(allMessage);
 		return;
 	}
-		
-	// Safety just in case number is too large
-	if(allMessage.RequiresConfirmation>10) allMessage.RequiresConfirmation = 10;
-		
-	if(allMessage.RequiresConfirmation > 0) // Still not zero after decrementing it
-	{
-		//Serial.println();
-		//Serial.print("Conf countdown Id:");
-		//Serial.println(allMessage.Id);
-		//Serial.print(" / ");			
-		//Serial.println(allMessage.RequiresConfirmation);
-
-		// Queue it for sending again
-		OutQueueEnqueue(allMessage);
-			
-		// Decrement it's retry counter
-		allMessage.RequiresConfirmation --;
-		
-		// Put it back in conf queue
-		confQueue.enqueue(allMessage);
-		
-		return;
-	}		
-	// Timeout for the last retry time - Error!
-	errorHandler(ERROR_CONFRECEIPTTIMEOUT);
-	return;
-
 	
-	// Stick it back on back of the confirmation queue
-	confQueue.enqueue(allMessage);
-	return;	
+	//// Stick it back on back of the confirmation queue
+	//confQueue.enqueue(allMessage);
+	//return;	
 }
 // When a confirmation is required for message we sent
 void RS485::confirmationIsRequired(AllMessage allMessage)
