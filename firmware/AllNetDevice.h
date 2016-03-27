@@ -18,8 +18,24 @@ class AllNetDevice
 {
 	public:
 	
+	byte BoardId = 0xFF;	// Id of board the device belongs to
+	byte Code = 0xFF;		// Unique code for this device
+
+	byte BoardIdLinked = 0xFF; // Board Id of the device linked to this
+	byte CodeLinked = 0xFF;		 // Code of the device linked to this device
+	
+	byte Type;	// Type of device
+	
+	
+	/*
+	
+	Important to realize the difference between a device and a board. A board hosts the device so PIN D1 is a device on a board. But just to 
+	confuse things the board has a virtual device that is the board itself. This is used to perform actions or read data about the board like booting or errors
+	*/
+	
 	enum
 	{
+		DEVICE_TYPE_BOARD ,		// The board itself
 		DEVICE_TYPE_NULL ,		// Null device
 		DEVICE_TYPE_ADC ,		// Analogue to digital converter
 		DEVICE_TYPE_DIG ,		// Digital IO
@@ -40,26 +56,36 @@ class AllNetDevice
 		DEVICE_TYPE_SENSOR_CURRENT ,		// Current sensor / shunt for measuring power
 		
 		DEVICE_TYPE_DISPLAY_LCD ,			// Standard LCD Library display
-		DEVICE_TYPE_DISPLAY_LED ,			// LED Segmented digital display
+		DEVICE_TYPE_DISPLAY_LED ,			// LED Segmented digital display		
+
+		DEVICE_STATE_BOOTING,		// Device / board is or just has booted
+		DEVICE_STATE_OK,			// Device is ok
+		DEVICE_STATE_LOST,			// Device is no longer present but should be
+		DEVICE_STATE_CHANGED,		// It's value / measurement etc has changed
+		DEVICE_STATE_ERROR,			// An error has occurred
+
+		DEVICE_ACTION_NONE,			// Nothing required of the device
+		DEVICE_ACTION_GETVALUE,		// Get a value from the device
+		DEVICE_ACTION_GETDATA,		// Get any data associated with this device
+		DEVICE_ACTION_SETVALUE,		// Set the value of this device
+		DEVICE_ACTION_SETDATA,		// Set the data for this device
 		
+		DEVICE_ACTION_CREATE,		// Creates a temporary device with the received data that only exists when board alive 
+		DEVICE_ACTION_UPDATE,		// Updates a device properties with the received data
+		DEVICE_ACTION_DELETE		// Deletes a temporary device - Hard coded devices can't be deleted
 		
-		
-	};  // end Devoice types
+		};
 	
-	bool Enable();
-	bool Disable();
+	bool Enable();	// Enables the device and sets any required pin modes
+	bool Disable(); // Disables the device
+	bool StateChange(byte newState); // Changes the devices state if allowed / possible
+	byte GetState(); // Returns the device's current state
+	
 	
 	private:
 	
 	bool Enabled = true;
-
-	byte BoardId = 0xFF;	// Id of board the device belongs to
-	byte Code = 0xFF;		// Unique code for this device
-
-	byte BoardIdLinked = 0xFF; // Board Id of the device linked to this
-	byte CodeLinked = 0xFF;		 // Code of the device linked to this device
-	
-	byte Type;	// Type of device
+	byte State;	// Type of device
 	
 	
 	
