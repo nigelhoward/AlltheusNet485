@@ -4,16 +4,14 @@
  Thanks Nick :-) I could not have written this without your excellent code and forum
  Please note I am not a C++ programmer. Pointers drive me nuts!
 
- Added more error reporting, debug serial output and strange extra byte read after ETX to stop nibble errors.
- Added RTS Control and AllNet485 stuff to allow all boards to share the bus as masters
  In my setup running a medium size bus, 250000 Baud, about 10 boards and sending 20 messages per second produced less than 0.1% errors
  See how the network is performing by checking the errorCounters and keeping track of the last sequence number for each board in an array
- Comparing sequence numbers they always increment by each time a message is sent.
+ Comparing sequence numbers they always increment by each time a message is sent. You can't use sequence number +1 following if confirmations are requested because confirmations have same seq number
  If the last message sequence number +1 doesn't equal this sequence number then you lost a message. Too bad, slow down a bit!
  Hardware serial performed much better than software serial for me. 250000 Baud was about the max for the serial port.
  If you build a test receiver to analyze above then make sure it doesn't do too much Serial.Print to a slow serial port. This will miss messages.
 
- Version P3.1 - By TopBanana 26-03-2016
+ Version P3.2 - By TopBanana 27-03-2016
 
 */
 
