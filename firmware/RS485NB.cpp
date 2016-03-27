@@ -14,7 +14,7 @@
 
  */
 
- // Version P3.1 - By TopBanana 26-03-2016
+ // Version P3.2 - By TopBanana 27-03-2016
 
 #include "RS485NB.h"
 
@@ -288,7 +288,7 @@ bool RS485::update ()
 					break;  // bad crc
 				} // end of bad CRC
 
-				// Strangely (my lack of understanding :-) there is a spare byte on the end that causes a nibble error.
+				// Strangely (and probably my lack of understanding :-) there is a spare byte on the end that causes a nibble error.
 				// Comment this line out if you are getting lots of errors.
 				// Required for Particle.io Photon & Arduino
 				
@@ -322,18 +322,7 @@ bool RS485::update ()
 				if(messageType == MESSAGE_BOARDCAST & ignoreBoardcasts == true) return false; // Boardcast and I'm ignoring them
 				if(messageReceiverId != myId && onlyReadMyMessages == true) return false; // Not for me!
 				// End filter
-				
-				// TEST Drop random message //
-				//randomSeed(analogRead(6));
-				//if(random(0,4)==3)
-				//{
-					//Serial.println();
-					//Serial.print("TEST msg drop Id:");
-					//Serial.println(newAllMessage.Id);
-					//return false;
-				//}
-				// END Test //			
-			
+							
 				// Is this a confirmation of a sent message?
 				if(newAllMessage.Type == MESSAGE_CONFIRMATION)
 				{	
@@ -613,38 +602,39 @@ void RS485::errorLEDHandler(bool state)
 void RS485::confQueueHandler() 
 {
 	// Get a message from the confirmation queue to look at
-	// return;
 	
 	if(confQueue.count() <1 )
 	{
-		Serial.print("Nothing in queue");
 		return;
 	}
 		 
-	
+	// Get a message from the confirmation queue	
 	AllMessage allMessage = confQueue.dequeue();
 	
-	// Has it been hanging around long enough
-	if( millis() - allMessage.WhenReceived > confQueueTimeoutDelay);
-	{
+	unsigned long now = millis();
+	
+	// Has it been hanging around long enough to be re-sent and re-quered in confirmation queue?
+	if((now - allMessage.WhenReceived) > confQueueTimeoutDelay)
+	{			
 		
-		// Safety just in case number is too large
-		if(allMessage.RequiresConfirmation>10) allMessage.RequiresConfirmation = 10;	
+		// Not happy with the logic here so limiting to 1 to override any set in code
+		// Problem is that confirmations sent with a message Id that has been incremented are not then found when
+		// a confirmation is actually received. So this code just fires off another allMessage.RequiresConfirmation -- times sending the message again regardless of the received
+		// response which has a Id that can't be found in this confirmation queue.
+		// A more elegant way is required here but one/two retries until timeout is fine given that this is a very reliable means of
+		// communicating between IOT things. 
+		
+		if(allMessage.RequiresConfirmation>1) {allMessage.RequiresConfirmation = 2;}	
 		if(allMessage.RequiresConfirmation > 0) // Not last try
 		{
-			Serial.println();
-			Serial.print("Conf countdown Id:");
-			Serial.println(allMessage.Id);
-			Serial.print(" / ");
-			Serial.println(allMessage.RequiresConfirmation);
-
-			// Queue it for sending again
-			OutQueueEnqueue(allMessage);
-		
 			// Decrement it's retry counter
 			allMessage.RequiresConfirmation --;
 		
+			// Queue it for sending again
+			OutQueueEnqueue(allMessage);
+			
 			// Put it back in conf queue
+			allMessage.WhenReceived = millis();
 			confQueue.enqueue(allMessage);
 		
 			return;
@@ -653,22 +643,10 @@ void RS485::confQueueHandler()
 		// Timeout for the last retry time - Error!
 		errorHandler(ERROR_CONFRECEIPTTIMEOUT);
 		return;
-
 	}
-	else // Long enough in queue
-	{
-			
-		Serial.println();
-		Serial.print("Message not enough Id:");
-		Serial.println(allMessage.Id);
-			
-		confQueue.enqueue(allMessage);
-		return;
-	}
-	
-	//// Stick it back on back of the confirmation queue
-	//confQueue.enqueue(allMessage);
-	//return;	
+	// Re-queue it timeout delay not passed
+	confQueue.enqueue(allMessage);
+	return;
 }
 // When a confirmation is required for message we sent
 void RS485::confirmationIsRequired(AllMessage allMessage)
