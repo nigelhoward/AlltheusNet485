@@ -150,7 +150,6 @@ void updateStats(AllMessage allMessage)
 
 void loop ()
 {
-	myChannel.updateReceive();
 	
 	int messageInQueue = myChannel.inQueue.items;
 	for (int i = 0; i < messageInQueue; i++)

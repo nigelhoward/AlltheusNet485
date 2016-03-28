@@ -317,11 +317,6 @@ bool RS485::updateReceive ()
 				{
 					newAllMessage.Data[i] = data_[i + MESSAGE_HEADER_SIZE];
 				}
-				
-				// Check filters - No messages pass this point if filters are applied
-				if(messageType == MESSAGE_BOARDCAST & ignoreBoardcasts == true) return false; // Boardcast and I'm ignoring them
-				if(messageReceiverId != myId && onlyReadMyMessages == true) return false; // Not for me!
-				// End filter
 							
 				// Is this a confirmation of a sent message?
 				if(newAllMessage.Type == MESSAGE_CONFIRMATION)
@@ -347,7 +342,28 @@ bool RS485::updateReceive ()
 				// keep adding if not full
 				if (inputPos_ < bufferSize_)
 				{
-					
+					// Filter out MESSAGE_BOARDCAST if selected
+					if (inputPos_ == 0)
+					{
+						// This is the type of message byte
+						if (ignoreBoardcasts && currentByte_ == MESSAGE_BOARDCAST )
+						{
+							reset();
+							return false;
+						}
+					}
+
+					// Filter out message that are not for me
+					if (inputPos_ == 1)
+					{
+						// This is the recipient byte
+						if (onlyReadMyMessages && currentByte_ == myId)
+						{
+							reset();
+							return false;
+						}
+					}
+
 					// Add the data to the data_ array
 					data_ [inputPos_++] = currentByte_;
 
