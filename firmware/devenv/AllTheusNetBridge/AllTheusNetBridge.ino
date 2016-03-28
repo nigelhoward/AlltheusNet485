@@ -136,7 +136,6 @@ void prepareSendMessages()
   {
     myText = "0" + String(percentageErrors,2)  + "% " + String(myChannel.getBusSpeed()) + "H " + String(messagesReceived); //messagesPerPeriod
     busMessage(PadMyText(myText,17));
-    myChannel.update();
   }
   else
   {
@@ -154,6 +153,8 @@ void prepareSendMessages()
   }
 
   thisTimeThatTime = !thisTimeThatTime;
+
+
 }
 
 void busMessage(String myText)
@@ -167,6 +168,15 @@ void busMessage(String myText)
 	myChannel.OutQueueEnqueue(newMessage);
 
 	messagesReceived ++; // Or we don't include our sent messages in bus performance / speed
+
+  // Test Message for Chilli - 0x88
+  /*myText = "Hello chilli";
+	myText.getBytes(newMessage.Data,myText.length()+1);
+  newMessage.ReceiverId = 0x88; // Chilli
+  newMessage.Type = RS485::MESSAGE_MESSAGE; // Normal message
+  newMessage.RequiresConfirmation = false;
+  myChannel.OutQueueEnqueue(newMessage);*/
+
 }
 
 

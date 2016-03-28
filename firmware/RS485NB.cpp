@@ -223,7 +223,7 @@ bool RS485::sendMsg (const byte * data, const byte length, const byte receiverId
 // called periodically from main loop to process data and
 // assemble the finished packet in 'data_'
 // returns true if packet received.
-bool RS485::updateReceive ()
+bool RS485::updateReceive()
   {
 
   while (fAvailableCallback_ () > 0)
@@ -331,7 +331,6 @@ bool RS485::updateReceive ()
 				// Push the message on the queue and make it available
 				if(!inQueue.enqueue(newAllMessage)) errorHandler(ERROR_INQUEUEOVERFLOW);	
 				
-				
 				messageWasReceived();
 
 				available_ = true;
@@ -339,34 +338,18 @@ bool RS485::updateReceive ()
 				return true;  // show data ready
 				}  // end if have ETX already
 
-				// keep adding if not full
+				// Do any filtering
+				if (FilterOutThisMessage(currentByte_, inputPos_ ) == true)
+				{
+					reset();
+					return false;
+				}
+
+				// keep adding if the buffer is not full
 				if (inputPos_ < bufferSize_)
 				{
-					// Filter out MESSAGE_BOARDCAST if selected
-					if (inputPos_ == 0)
-					{
-						// This is the type of message byte
-						if (ignoreBoardcasts && currentByte_ == MESSAGE_BOARDCAST )
-						{
-							reset();
-							return false;
-						}
-					}
-
-					// Filter out message that are not for me
-					if (inputPos_ == 1)
-					{
-						// This is the recipient byte
-						if (onlyReadMyMessages && currentByte_ == myId)
-						{
-							reset();
-							return false;
-						}
-					}
-
 					// Add the data to the data_ array
 					data_ [inputPos_++] = currentByte_;
-
 				}
 				else
 				{
@@ -748,4 +731,21 @@ void RS485::confirmationWasNotReceived()
 bool RS485::confirmationTimedOutForMessage(AllMessage allMessage) 
 {
 	
+}
+// Filter out any unwanted mesages
+bool RS485::FilterOutThisMessage(byte msgByte, int inputPosition)
+{
+
+	// Filter out MESSAGE_BOARDCAST if selected
+	if (inputPosition == 0) // This is the type of message byte
+	{
+		if (ignoreBoardcasts == true && msgByte == MESSAGE_BOARDCAST) return true;
+	}
+
+	// Filter out message that are not for me
+	if (inputPosition == 1) // This is the recipient byte
+	{
+		if (onlyReadMyMessages == true && msgByte != myId) return true;
+	}
+	return false;
 }

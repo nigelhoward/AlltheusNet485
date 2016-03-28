@@ -126,6 +126,10 @@ class RS485
 	unsigned long busSpeedLastMessageReceivedCount = 0; // Use to calculate approx bus speed in messages per second
 	void calculateBusSpeed(); // Does the waiting and calculation
 
+	// handle incoming data, return true if packet ready
+	// Now private because no one should call this. Call allNetUpdate instead
+	bool updateReceive();
+
   public:
 	  // Types of message
 	  enum
@@ -171,9 +175,6 @@ class RS485
 
     // free memory in buf_
     void stop ();
-
-    // handle incoming data, return true if packet ready
-    bool update ();
 
     // reset to no incoming data (eg. after a timeout)
     void reset ();
@@ -308,7 +309,7 @@ class RS485
 	void confirmationWasReceived(AllMessage); // When a conf is received do these things
 	void confirmationWasNotReceived(); // All retries and the timeout has expired
 	bool confirmationTimedOutForMessage(AllMessage allMessage); // Check if the message has timed out / expired
-	
+	bool FilterOutThisMessage(byte msgByte, int inputPosition); // Filters out unwanted messages
 
   }; // end of class RS485
 

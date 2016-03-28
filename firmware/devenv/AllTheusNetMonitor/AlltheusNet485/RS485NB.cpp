@@ -223,7 +223,7 @@ bool RS485::sendMsg (const byte * data, const byte length, const byte receiverId
 // called periodically from main loop to process data and
 // assemble the finished packet in 'data_'
 // returns true if packet received.
-bool RS485::update ()
+bool RS485::updateReceive()
   {
 
   while (fAvailableCallback_ () > 0)
@@ -317,11 +317,6 @@ bool RS485::update ()
 				{
 					newAllMessage.Data[i] = data_[i + MESSAGE_HEADER_SIZE];
 				}
-				
-				// Check filters - No messages pass this point if filters are applied
-				if(messageType == MESSAGE_BOARDCAST & ignoreBoardcasts == true) return false; // Boardcast and I'm ignoring them
-				if(messageReceiverId != myId && onlyReadMyMessages == true) return false; // Not for me!
-				// End filter
 							
 				// Is this a confirmation of a sent message?
 				if(newAllMessage.Type == MESSAGE_CONFIRMATION)
@@ -336,7 +331,6 @@ bool RS485::update ()
 				// Push the message on the queue and make it available
 				if(!inQueue.enqueue(newAllMessage)) errorHandler(ERROR_INQUEUEOVERFLOW);	
 				
-				
 				messageWasReceived();
 
 				available_ = true;
@@ -344,13 +338,18 @@ bool RS485::update ()
 				return true;  // show data ready
 				}  // end if have ETX already
 
-				// keep adding if not full
+				// Do any filtering
+				if (FilterOutThisMessage(currentByte_, inputPos_ ) == true)
+				{
+					reset();
+					return false;
+				}
+
+				// keep adding if the buffer is not full
 				if (inputPos_ < bufferSize_)
 				{
-					
 					// Add the data to the data_ array
 					data_ [inputPos_++] = currentByte_;
-
 				}
 				else
 				{
@@ -377,7 +376,7 @@ bool RS485::update ()
   void RS485::allNetUpdate()
   {
 	  // Do a read / update
-	    RS485::update();
+	    RS485::updateReceive();
 	  
 	  // Send any messages that are in the OutQueue
 	  if(outQueue.count()>0)
@@ -387,14 +386,14 @@ bool RS485::update ()
 		{
 			// It worked
 			if(messageNotSentLED!=255) digitalWrite(messageNotSentLED, LOW);	    
-			RS485::update();
+			RS485::updateReceive();
 		}
 		else
 		{
 			// Did not work - Put message back in the OutQueue
 			if(messageNotSentLED!=255) digitalWrite(messageNotSentLED, HIGH);
 			OutQueueEnqueue(allMessage);
-		    RS485::update();
+		    RS485::updateReceive();
 		}
 	  }
 	  confQueueHandler();
@@ -462,7 +461,7 @@ bool RS485::update ()
 	{
 		// Check if overflow (back to wero for micros() occured during this method
 		if (microsStart > micros()) microsStart = micros();  // Re-assign it so we don't get a super huge delay
-		if(allNet485Enabled) update(); // Read any data that's on it's way in if AllNet is enabled
+		if(allNet485Enabled) updateReceive(); // Read any data that's on it's way in if AllNet is enabled
 	}
   }
   // As above but with milliseconds
@@ -496,7 +495,7 @@ bool RS485::update ()
   // Stuff that needs doing while a delay is delaying
   void RS485::doDelayStuff()
   {
-	  update();
+	  updateReceive();
   }
   // Message Queue setup
   void RS485::initMessageQueues(int inSize, int outSize, int conSize)
@@ -732,4 +731,21 @@ void RS485::confirmationWasNotReceived()
 bool RS485::confirmationTimedOutForMessage(AllMessage allMessage) 
 {
 	
+}
+// Filter out any unwanted mesages
+bool RS485::FilterOutThisMessage(byte msgByte, int inputPosition)
+{
+
+	// Filter out MESSAGE_BOARDCAST if selected
+	if (inputPosition == 0) // This is the type of message byte
+	{
+		if (ignoreBoardcasts == true && msgByte == MESSAGE_BOARDCAST) return true;
+	}
+
+	// Filter out message that are not for me
+	if (inputPosition == 1) // This is the recipient byte
+	{
+		if (onlyReadMyMessages == true && msgByte != myId) return true;
+	}
+	return false;
 }

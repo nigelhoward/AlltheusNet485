@@ -43,9 +43,9 @@ void setup ()
 	Serial1.begin (250000);
 	Serial.begin (250000);
 
-	allBoardId = 0x10; // Rose
+	//allBoardId = 0x10; // Rose
 	//allBoardId = 0x12; // Thyme
-	//allBoardId = 0x11; // Basil
+	allBoardId = 0x11; // Basil
 
 	myChannel.messageNotSentLED = 13;
 	myChannel.errorEventLED = 12;	
