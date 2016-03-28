@@ -309,7 +309,7 @@ class RS485
 	void confirmationWasReceived(AllMessage); // When a conf is received do these things
 	void confirmationWasNotReceived(); // All retries and the timeout has expired
 	bool confirmationTimedOutForMessage(AllMessage allMessage); // Check if the message has timed out / expired
-	bool FilterOutThisMessage(byte msgByte, int inputPosition); // Filters out unwanted messages
+	bool filterOutThisMessage(byte msgByte, int inputPosition); // Filters out unwanted messages
 
   }; // end of class RS485
 

@@ -339,7 +339,7 @@ bool RS485::updateReceive()
 				}  // end if have ETX already
 
 				// Do any filtering
-				if (FilterOutThisMessage(currentByte_, inputPos_ ) == true)
+				if (filterOutThisMessage(currentByte_, inputPos_ ) == true)
 				{
 					reset();
 					return false;
@@ -733,7 +733,7 @@ bool RS485::confirmationTimedOutForMessage(AllMessage allMessage)
 	
 }
 // Filter out any unwanted mesages
-bool RS485::FilterOutThisMessage(byte msgByte, int inputPosition)
+bool RS485::filterOutThisMessage(byte msgByte, int inputPosition)
 {
 
 	// Filter out MESSAGE_BOARDCAST if selected
