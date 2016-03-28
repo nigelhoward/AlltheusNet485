@@ -14,6 +14,9 @@ AllDevice for devices that use the AllNet485
 #endif
 #include "AllQueue.h"
 
+#ifndef _ALLNETDEVICE
+#define _ALLNETDEVICE
+
 class AllNetDevice
 {
 	public:
@@ -119,3 +122,6 @@ class AllNetDevice
 	unsigned long SentLast = 0; // Millis() of the last time it's values were sent on the bus
 
 };
+
+
+#endif // !_ALLNETDEVICE

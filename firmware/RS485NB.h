@@ -14,6 +14,9 @@
  Version P3.2 - By TopBanana 27-03-2016
 
 */
+#ifndef _RS485NB
+#define _RS485NB
+
 
 // Particle boards have a PLATFORM_ID Defined but Arduino boards don't. Below includes relevant header.
 #ifdef PLATFORM_ID
@@ -308,3 +311,5 @@ class RS485
 	
 
   }; // end of class RS485
+
+#endif // !_RS485NB
