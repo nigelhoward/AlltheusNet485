@@ -173,7 +173,7 @@ class RS485
     void stop ();
 
     // handle incoming data, return true if packet ready
-    bool update ();
+    bool updateReceive ();
 
     // reset to no incoming data (eg. after a timeout)
     void reset ();

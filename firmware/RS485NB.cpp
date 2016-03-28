@@ -223,7 +223,7 @@ bool RS485::sendMsg (const byte * data, const byte length, const byte receiverId
 // called periodically from main loop to process data and
 // assemble the finished packet in 'data_'
 // returns true if packet received.
-bool RS485::update ()
+bool RS485::updateReceive ()
   {
 
   while (fAvailableCallback_ () > 0)
@@ -377,7 +377,7 @@ bool RS485::update ()
   void RS485::allNetUpdate()
   {
 	  // Do a read / update
-	    RS485::update();
+	    RS485::updateReceive();
 	  
 	  // Send any messages that are in the OutQueue
 	  if(outQueue.count()>0)
@@ -387,14 +387,14 @@ bool RS485::update ()
 		{
 			// It worked
 			if(messageNotSentLED!=255) digitalWrite(messageNotSentLED, LOW);	    
-			RS485::update();
+			RS485::updateReceive();
 		}
 		else
 		{
 			// Did not work - Put message back in the OutQueue
 			if(messageNotSentLED!=255) digitalWrite(messageNotSentLED, HIGH);
 			OutQueueEnqueue(allMessage);
-		    RS485::update();
+		    RS485::updateReceive();
 		}
 	  }
 	  confQueueHandler();
@@ -462,7 +462,7 @@ bool RS485::update ()
 	{
 		// Check if overflow (back to wero for micros() occured during this method
 		if (microsStart > micros()) microsStart = micros();  // Re-assign it so we don't get a super huge delay
-		if(allNet485Enabled) update(); // Read any data that's on it's way in if AllNet is enabled
+		if(allNet485Enabled) updateReceive(); // Read any data that's on it's way in if AllNet is enabled
 	}
   }
   // As above but with milliseconds
@@ -496,7 +496,7 @@ bool RS485::update ()
   // Stuff that needs doing while a delay is delaying
   void RS485::doDelayStuff()
   {
-	  update();
+	  updateReceive();
   }
   // Message Queue setup
   void RS485::initMessageQueues(int inSize, int outSize, int conSize)
