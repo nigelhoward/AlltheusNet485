@@ -53,6 +53,8 @@ volatile long lastPacketReceiveTimeMillis;
 int samplePeriodForMessagesPerPeriod = 6000;
 long lastMillis = 0;
 
+char lcdTextBuffer[16];
+
 void setup()
 {
 	// LCD Start
@@ -100,16 +102,41 @@ void loop()
 		
 		AllMessage allMessage;
 		allMessage = myChannel.InQueueDequeue();
-		
-		char lineNumber = allMessage.Data[0];
-				
-		if(lineNumber== '0') lcd.setCursor(0, 0);				
-		if(lineNumber== '1') lcd.setCursor(0, 1);
-		
-				
-		for (int i =1; i < 17 ; i++) // Plus one because the first byte is the line number
+		if (myChannel.keyValueKeyExists(allMessage.Data, "LCDRow"))
 		{
-			lcd.print((char)allMessage.Data[i]);
+			int rowNumber = myChannel.getKeyValueIntWithKey(allMessage.Data, "LCDRow"); // The keyValue with the row number
+			lcd.setCursor(0, rowNumber);
+
+			// After call keyValueData will contain length and location of data in allMessage.Data
+			KeyValueData keyValueData;
+			myChannel.getKeyValueDetailsWithKey(keyValueData,allMessage.Data, "Text"); // The text
+			
+			Serial.println();
+			Serial.println();
+			Serial.print("keyValueData.valueLength:");
+			Serial.println(keyValueData.valueLength);
+			Serial.print("keyValueData.valueStartPosition:");
+			Serial.println(keyValueData.valueStartPosition);
+
+			for (int i = 0; i < 35; i++)
+			{
+
+				if (allMessage.Data[i] > 31 && allMessage.Data[i] < 127)
+				{
+					Serial.print((char)allMessage.Data[i]);
+				}
+				else
+				{
+					Serial.print("_");
+				}
+			}
+
+
+
+			for (int i = 0; i < keyValueData.valueLength; i++)
+			{
+				lcd.print((char)allMessage.Data[i+ keyValueData.valueStartPosition]);
+			}
 		}
 
 	}

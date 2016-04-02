@@ -782,6 +782,59 @@ int RS485::getKeyValueIntWithKey(const byte * data, const char * key)
 	delete buffer;
 	return result;
 }
+
+bool RS485::keyValueKeyExists(byte * data, const char * key)
+{
+	KeyValueData funcTempData;
+	return getKeyValueDetailsWithKey(funcTempData, data, key);
+}
+bool RS485::getKeyValueDetailsWithKey(KeyValueData &tempData, const byte * data, const char * key)
+{
+	tempData.valueStartPosition = 0;
+	tempData.valueLength = 0;
+
+	bool foundKey = false;
+	// Make a temporary buffer of the search string as '{' + key + '='
+	char *findKeyBuffer = new char[MESSAGE_DATA_SIZE];
+	strcpy(findKeyBuffer, "{");
+	strcat(findKeyBuffer, key);
+	strcat(findKeyBuffer, "=");
+
+	// Search for the temporary findKeyBuffer in data
+	const char* findKeyPtr = strstr((char *)data, findKeyBuffer);
+	if (findKeyPtr == 0) return false; // Not there - Return false
+									   
+	// Get the length of the key with syntax
+	int KeyLengthIncSyntax = 0;
+	for (size_t i = 0; i < MESSAGE_DATA_SIZE; i++)
+	{
+		char myChar = findKeyBuffer[i];
+		if (myChar == '=')
+		{
+			KeyLengthIncSyntax = i + 1;
+			break;
+		}
+	}
+
+	// Get the data details
+	int keyStartPosition = findKeyPtr - (char *)data;
+
+	// Find the length the value by looking for the closing }
+	tempData.valueStartPosition = keyStartPosition + KeyLengthIncSyntax;
+
+	for (size_t i = 0; i < MESSAGE_DATA_SIZE; i++)
+	{
+		char myChar = data[i + tempData.valueStartPosition];
+		if (myChar == '}' && tempData.valueLength==0)
+		{
+			tempData.valueLength = i; // i is zero indexed so no need to --i even though on next char in array
+			break;
+		}
+	}
+	delete findKeyBuffer;
+	return true;
+}
+
 bool RS485::buildKeyValueDataFromKeyValue(byte * data, const char * key, const char * value)
 {
 	// Find position of the last value cruly
@@ -796,7 +849,7 @@ bool RS485::buildKeyValueDataFromKeyValue(byte * data, const char * key, const c
 	data[insertPosition] = '{';
 	insertPosition++;
 
-	for (size_t i = 0; i < MESSAGE_VALUE_SIZE; i++)
+	for (size_t i = 0; i < MESSAGE_DATA_SIZE; i++)
 	{
 		char keyChar = key[i];
 		if (keyChar == '\0') break;
@@ -819,57 +872,10 @@ bool RS485::buildKeyValueDataFromKeyValue(byte * data, const char * key, const c
 
 	return true;
 }
-
-bool RS485::keyValueKeyExists(byte * data, const char * key)
-{
-	KeyValueData funcTempData;
-	return getKeyValueDetailsWithKey(funcTempData, data, key);
-}
-bool RS485::getKeyValueDetailsWithKey(KeyValueData &tempData, const byte * data, const char * key)
-{
-	tempData.valueStartPosition = 0;
-	tempData.valueLength = 0;
-
-	bool foundKey = false;
-	// Make a temporary buffer of the search string as '{' + key + '='
-	char *findKeyBuffer = new char[MESSAGE_DATA_SIZE];
-	strcpy(findKeyBuffer, "{");
-	strcat(findKeyBuffer, key);
-	strcat(findKeyBuffer, "=");
-
-	// Search for the temporary findKeyBuffer in data
-	const char* findKeyPtr = strstr((char *)data, findKeyBuffer);
-	if (findKeyPtr == 0) return false; // Not there - Return false
-
-											 // Get the length of the key with syntax
-	int KeyLengthIncSyntax = 0;
-	for (size_t i = 0; i < MESSAGE_VALUE_SIZE; i++)
-	{
-		char myChar = findKeyBuffer[i];
-		if (myChar == '=') KeyLengthIncSyntax = i + 1;
-	}
-
-	// Get the data details
-
-	//void * memoryLocationOfData = (void*)&data[0]; // Gets the actual mem address of the first byte of data
-	int keyStartPosition = findKeyPtr - (char *)data;
-
-	// Find the length the value by looking for the closing }
-	tempData.valueStartPosition = keyStartPosition + KeyLengthIncSyntax;
-	for (size_t i = 0; i < MESSAGE_VALUE_SIZE; i++)
-	{
-		char myChar = data[i + tempData.valueStartPosition];
-		if (myChar == '}') tempData.valueLength = i; // i is zero indexed so no need to --i even thou on next char in array
-	}
-
-	delete findKeyBuffer;
-	return true;
-}
-
 bool RS485::buildKeyValueDataFromKeyValueInt(byte * data, const char * key, const int value)
 {
-	char *valueBuffer = new char[MESSAGE_VALUE_SIZE];
-	int cx = snprintf(valueBuffer, MESSAGE_VALUE_SIZE, "%i", value);
+	char *valueBuffer = new char[MESSAGE_DATA_SIZE];
+	int cx = snprintf(valueBuffer, MESSAGE_DATA_SIZE, "%i", value);
 	buildKeyValueDataFromKeyValue(data, key, valueBuffer);
 	delete valueBuffer;
 	if (cx > 0) return true;
@@ -877,8 +883,8 @@ bool RS485::buildKeyValueDataFromKeyValueInt(byte * data, const char * key, cons
 }
 bool RS485::buildKeyValueDataFromKeyValueLong(byte * data, const char * key, const long value)
 {
-	char *valueBuffer = new char[MESSAGE_VALUE_SIZE];
-	int cx = snprintf(valueBuffer, MESSAGE_VALUE_SIZE, "%i", value);
+	char *valueBuffer = new char[MESSAGE_DATA_SIZE];
+	int cx = snprintf(valueBuffer, MESSAGE_DATA_SIZE, "%i", value);
 	buildKeyValueDataFromKeyValue(data, key, valueBuffer);
 	delete valueBuffer;
 	if (cx > 0) return true;
@@ -886,8 +892,8 @@ bool RS485::buildKeyValueDataFromKeyValueLong(byte * data, const char * key, con
 }
 bool RS485::buildKeyValueDataFromKeyValueDouble(byte * data, const char * key, const double value)
 {
-	char *valueBuffer = new char[MESSAGE_VALUE_SIZE];
-	int cx = snprintf(valueBuffer, MESSAGE_VALUE_SIZE, "%f", value);
+	char *valueBuffer = new char[MESSAGE_DATA_SIZE];
+	int cx = snprintf(valueBuffer, MESSAGE_DATA_SIZE, "%f", value);
 	buildKeyValueDataFromKeyValue(data, key, valueBuffer);
 	delete valueBuffer;
 	if (cx > 0) return true;

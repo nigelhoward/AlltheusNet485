@@ -230,7 +230,7 @@ void serialPrintStats(AllMessage allMessage)
 	
 	Serial.print(" '");
 
-	for (int i = 0; i < 16; i++)
+	for (int i = 0; i < 50; i++)
 	{
 		myChannel.allNetUpdate();
 		if(allMessage.Data[i] > 31 && allMessage.Data[i] < 127)

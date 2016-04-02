@@ -29,7 +29,6 @@ bool buildDataFromKeyValueLong(char * data, const char * key, const long value);
 bool buildDataFromKeyValueInt(char * data, const char * key, const int value);
 
 const int MESSAGE_DATA_SIZE = 50;
-const int MESSAGE_VALUE_SIZE = 12;
 const int MESSAGE_KEY_SIZE = 12;
 
 int main()
@@ -39,23 +38,29 @@ int main()
 	double myDouble = 123.45678;
 	long myLong = 12345678;
 	double myInt = 123456;
-	char *valueBuffer = new char[MESSAGE_VALUE_SIZE];
-	int cx = snprintf(valueBuffer, MESSAGE_VALUE_SIZE,"%f", myDouble);
+	char *valueBuffer = new char[MESSAGE_DATA_SIZE];
+	int cx = snprintf(valueBuffer, MESSAGE_DATA_SIZE,"%f", myDouble);
 
-	buildDataFromKeyValue(data, "Day","Mday");
-	buildDataFromKeyValueDouble(data, "D", 1235.456);
-	buildDataFromKeyValueLong(data, "Long",74564894);
-	buildDataFromKeyValueInt(data, "Int", 45345);
+
+	buildDataFromKeyValue(data, "Text","0.00% 0H 485");
+	buildDataFromKeyValueInt(data, "MyInt", 123456);
+	buildDataFromKeyValueInt(data, "LCDRow", 1);
+	
+	//buildDataFromKeyValueDouble(data, "D", 1235.456);
+	//buildDataFromKeyValueLong(data, "Long",74564894);
 	//buildDataFromKeyValue(data, "Temp", "45.67");
 	
 	//{Day=Mday}{D=1235.456000}{Long=74564894}{Int=45345}
 	//			1         2         3         4
 	//012345678901234567890123456789012345678901234567890
-
+	//{Text=0.00% 0H 485}{MyInt=123456}{LCDRow=1}
 	KeyValueData kvd;
 
-	bool yes = getValueDetailsWithKey(kvd, data, "Int");
-	std::cout << " Data:" << data;
+	bool yes = getValueDetailsWithKey(kvd, data, "Text");
+	int valueInt = getValueIntWithKey(data, "LCDRow");
+	int valueInt2 = getValueIntWithKey(data, "MyInt");
+
+	//std::cout << " Data:" << data;
 
 	//keyForValue[16] = "Day";
 	//valueForKey[16] = "Monday";
@@ -68,7 +73,7 @@ int main()
 	//std::cout << " Data:" << data;
 
 	//getValueDetailsWithKey(tempData,data, keyForValue);
-	int valueInt = getValueIntWithKey(data, "Int");
+
 	long valueLong = getValueLongWithKey(data, "Long");
 	string valueString = getValueStringWithKey(data, "Day");
 	double valueDouble = getValueDoubleWithKey(data, "D");
@@ -134,8 +139,8 @@ string getValueStringWithKey(const char * data, const char * key)
 
 bool buildDataFromKeyValueInt(char * data, const char * key, const int value)
 {
-	char *valueBuffer = new char[MESSAGE_VALUE_SIZE];
-	int cx = snprintf(valueBuffer, MESSAGE_VALUE_SIZE, "%i", value);
+	char *valueBuffer = new char[MESSAGE_DATA_SIZE];
+	int cx = snprintf(valueBuffer, MESSAGE_DATA_SIZE, "%i", value);
 	buildDataFromKeyValue(data, key, valueBuffer);
 	delete valueBuffer;
 	if (cx > 0) return true;
@@ -143,8 +148,8 @@ bool buildDataFromKeyValueInt(char * data, const char * key, const int value)
 }
 bool buildDataFromKeyValueLong(char * data, const char * key, const long value)
 {
-	char *valueBuffer = new char[MESSAGE_VALUE_SIZE];
-	int cx = snprintf(valueBuffer, MESSAGE_VALUE_SIZE, "%i", value);
+	char *valueBuffer = new char[MESSAGE_DATA_SIZE];
+	int cx = snprintf(valueBuffer, MESSAGE_DATA_SIZE, "%i", value);
 	buildDataFromKeyValue(data, key, valueBuffer);
 	delete valueBuffer;
 	if (cx > 0) return true;
@@ -152,8 +157,8 @@ bool buildDataFromKeyValueLong(char * data, const char * key, const long value)
 }
 bool buildDataFromKeyValueDouble(char * data, const char * key, const double value)
 {
-	char *valueBuffer = new char[MESSAGE_VALUE_SIZE];
-	int cx = snprintf(valueBuffer, MESSAGE_VALUE_SIZE, "%f", value);
+	char *valueBuffer = new char[MESSAGE_DATA_SIZE];
+	int cx = snprintf(valueBuffer, MESSAGE_DATA_SIZE, "%f", value);
 	buildDataFromKeyValue(data, key, valueBuffer);
 	delete valueBuffer;
 	if (cx > 0) return true;
@@ -174,7 +179,7 @@ bool buildDataFromKeyValue(char * data, const char * key ,const char * value)
 	data[insertPosition] = '{';
 	insertPosition++;
 
-	for (size_t i = 0; i < MESSAGE_VALUE_SIZE; i++)
+	for (size_t i = 0; i < MESSAGE_DATA_SIZE; i++)
 	{
 		char keyChar = key[i];
 		if (keyChar == '\0') break;
@@ -216,10 +221,14 @@ bool getValueDetailsWithKey(KeyValueData &tempData, const char * data, const cha
 
 	// Get the length of the key with syntax
 	int KeyLengthIncSyntax = 0;
-	for (size_t i = 0; i < MESSAGE_VALUE_SIZE; i++)
+	for (size_t i = 0; i < MESSAGE_DATA_SIZE; i++)
 	{
 		char myChar = findKeyBuffer[i];
-		if (myChar == '=') KeyLengthIncSyntax = i+1;
+		if (myChar == '=')
+		{
+			KeyLengthIncSyntax = i + 1;
+			break;
+		}
 	}
 
 	// Get the data details
@@ -229,10 +238,15 @@ bool getValueDetailsWithKey(KeyValueData &tempData, const char * data, const cha
 	
 	// Find the length the value by looking for the closing }
 	tempData.valueStartPosition = keyStartPosition + KeyLengthIncSyntax;
-	for (size_t i = 0; i < MESSAGE_VALUE_SIZE; i++)
+	for (size_t i = 0; i < MESSAGE_DATA_SIZE; i++)
 	{
 		char myChar = data[i + tempData.valueStartPosition];
-		if (myChar == '}') tempData.valueLength = i; // i is zero indexed so no need to --i even thou on next char in array
+		if (myChar == '}')
+		{
+			tempData.valueLength = i; // i is zero indexed so no need to --i even thou on next char in array
+			break;
+		}
+		
 	}
 
 	delete findKeyBuffer;

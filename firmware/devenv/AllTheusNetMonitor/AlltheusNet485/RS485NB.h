@@ -322,7 +322,7 @@ class RS485
 	// Methods for setting and retrieving values from the AllDevice.Data property or any buffer by reference
 	// Use KeyValue data structure if calling getKeyValueDetailsWithKey for data location and length
 	const int MESSAGE_VALUE_SIZE = MESSAGE_DATA_SIZE - 5; // Size of value char array - Or 5 less than DATA because at least one key value has {k=1}
-	const int MESSAGE_KEY_SIZE = 12; // How long the key name array
+	const int MESSAGE_KEY_SIZE = 12; // How long the key char array can be - 12 should cover most uses - Case sensitive
 	
 	bool keyValueKeyExists(byte * data, const char * key);
 	bool getKeyValueDetailsWithKey(KeyValueData &tempData, const byte * data, const char * key);
