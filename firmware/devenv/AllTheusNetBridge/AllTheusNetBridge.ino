@@ -154,7 +154,6 @@ void prepareSendMessages()
 
   thisTimeThatTime = !thisTimeThatTime;
 
-
 }
 
 void busMessage(String myText)
@@ -166,7 +165,6 @@ void busMessage(String myText)
 	newMessage.Type = RS485::MESSAGE_MESSAGE; // Normal message
 	newMessage.RequiresConfirmation = false;
 	myChannel.OutQueueEnqueue(newMessage);
-
 	messagesReceived ++; // Or we don't include our sent messages in bus performance / speed
 
   // Test Message for Chilli - 0x88
@@ -198,8 +196,16 @@ void loop ()
 
   if(secondToggle)
   {
+    //bool buildKeyValueDataFromKeyValue(char * data, const char * key, const char *value);
+    AllMessage newMessage;
+
+    myChannel.buildKeyValueDataFromKeyValueInt(newMessage.Data,"BusSpeed",myChannel.getBusSpeed());
+
+    newMessage.ReceiverId = 0x01; // Apricot
+    newMessage.Type = RS485::MESSAGE_MESSAGE; // For everyone
+    newMessage.RequiresConfirmation = false;
+    myChannel.OutQueueEnqueue(newMessage);
     secondToggle = false;
-    prepareSendMessages();
   }
 
   int messageInQueue = myChannel.inQueue.items;

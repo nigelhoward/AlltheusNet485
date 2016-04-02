@@ -29,6 +29,14 @@
 const int MESSAGE_DATA_SIZE = 50;
 const int MESSAGE_HEADER_SIZE = 8;
 
+// Structure to hold the keyValue length and position
+struct KeyValueData
+{
+	int valueStartPosition = 0;
+	int valueLength = 0;
+	bool error = false;
+};
+
 class AllMessage
 	{
 	public:
@@ -309,7 +317,23 @@ class RS485
 	void confirmationWasReceived(AllMessage); // When a conf is received do these things
 	void confirmationWasNotReceived(); // All retries and the timeout has expired
 	bool confirmationTimedOutForMessage(AllMessage allMessage); // Check if the message has timed out / expired
-	bool FilterOutThisMessage(byte msgByte, int inputPosition); // Filters out unwanted messages
+	bool filterOutThisMessage(byte msgByte, int inputPosition); // Filters out unwanted messages
+
+	// Methods for setting and retrieving values from the AllDevice.Data property or any buffer by reference
+	// Use KeyValue data structure if calling getKeyValueDetailsWithKey for data location and length
+	const int MESSAGE_VALUE_SIZE = MESSAGE_DATA_SIZE - 5; // Size of value char array - Or 5 less than DATA because at least one key value has {k=1}
+	const int MESSAGE_KEY_SIZE = 12; // How long the key name array
+	
+	bool keyValueKeyExists(byte * data, const char * key);
+	bool getKeyValueDetailsWithKey(KeyValueData &tempData, const byte * data, const char * key);
+	long getKeyValueLongWithKey(const byte * data, const char * key);
+	double getKeyValueDoubleWithKey(const byte * data, const char * key);
+	int getKeyValueIntWithKey(const byte * data, const char * key);
+
+	bool buildKeyValueDataFromKeyValue(byte * data, const char * key, const char *value);
+	bool buildKeyValueDataFromKeyValueDouble(byte * data, const char * key, const double value);
+	bool buildKeyValueDataFromKeyValueLong(byte * data, const char * key, const long value);
+	bool buildKeyValueDataFromKeyValueInt(byte * data, const char * key, const int value);
 
   }; // end of class RS485
 

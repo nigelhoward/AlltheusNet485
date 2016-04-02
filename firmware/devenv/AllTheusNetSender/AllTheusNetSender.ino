@@ -34,6 +34,10 @@ bool halfSecondToggle = false;
 bool tenthSecondToggle = false;
 bool thisTimeThatTime = false;
 
+unsigned long speedRegLastMillis = 0;
+int speedRegGapMillis = 200;
+int currentBusSpeed = 0;
+
 Timer timerEvery1000ms(1000, everySecond);
 Timer timerEvery500ms(500, everyHalfSecond);
 Timer timerEvery100ms(100, every10thSecond);
@@ -97,10 +101,24 @@ void busMessage(String myText)
 void loop ()
 {
   myChannel.allNetUpdate();
+  int messageInQueue = myChannel.inQueue.items;
+	for (int i = 0; i < messageInQueue; i++)
+	{
+		myChannel.allNetUpdate();
 
+		AllMessage allMessage;
+		allMessage = myChannel.InQueueDequeue();
+    // Does the data exist
+    if(myChannel.keyValueKeyExists(allMessage.Data,"BusSpeed"))
+    {
+      int tempBusSpeed = myChannel.getKeyValueIntWithKey(allMessage.Data,"BusSpeed");
+      if(tempBusSpeed!=0) currentBusSpeed = tempBusSpeed;
+    }
+
+	}
   if(tenthSecondToggle)
   {
-    busMessage("");
+    //busMessage("");
     tenthSecondToggle = false;
   }
 
@@ -111,12 +129,51 @@ void loop ()
 
   if(secondToggle)
   {
+    regulateSpeed();
     secondToggle = false;
+  }
+
+  // Speed regulator! :-)(-:
+  if(millis() - speedRegGapMillis > speedRegLastMillis)
+  {
+    speedRegLastMillis = millis();
+
+    Serial.print("currentBusSpeed:");
+    Serial.println(currentBusSpeed);
+    Serial.print("Delay:");
+    Serial.println(speedRegGapMillis);
+    //if(currentBusSpeed==0) return;
+
+    // Test Message for Chilli - 0x88
+    AllMessage newMessage;
+    myChannel.buildKeyValueDataFromKeyValueInt(newMessage.Data,"SpdGap",speedRegGapMillis);
+  	newMessage.ReceiverId = 0xFF; // Everyone
+  	newMessage.Type = RS485::MESSAGE_BOARDCAST; // For everyone to see
+  	newMessage.RequiresConfirmation = false;
+  	myChannel.OutQueueEnqueue(newMessage);
   }
 
 
 }  // end of loop
 
+void regulateSpeed()
+{
+  int minSpeed = 60;
+  int maxSpeed = 64;
+  int changeUpValue =-5;
+  int changeDownValue =2;
+
+  // Can we update spped controller yet - Every half second is ok
+  if(currentBusSpeed < minSpeed && speedRegGapMillis > 20)
+  {
+    speedRegGapMillis = speedRegGapMillis + changeUpValue;
+    return;
+  }
+  if(currentBusSpeed > maxSpeed)
+  {
+    speedRegGapMillis = speedRegGapMillis + changeDownValue;
+  }
+}
 
 void randomMillsecondDelay()
 {
