@@ -52,7 +52,7 @@ bool tenthSecondToggle = false;
 bool thisTimeThatTime = false;
 bool thisTimeThatTime2 = false;
 
-char lcdTextBuffer[20];
+char lcdTextBuffer[MESSAGE_DATA_SIZE];
 
 void updateStats(AllMessage allMessage);
 
@@ -134,26 +134,24 @@ String PadMyText(String myText , int newLength)
 void prepareSendMessages()
 {
   int lcdRow=0;
-  String myText ;
+  //String myText ;
   if(thisTimeThatTime)
   {
     lcdRow = 0;
-    myText = String(percentageErrors,2)  + "% " + String(myChannel.getBusSpeed()) + "H " + String(messagesReceived); //messagesPerPeriod
+    sprintf ( lcdTextBuffer, "%1.2f%% %07d %02d ",percentageErrors,messagesReceived,myChannel.getBusSpeed());
   }
   else
   {
     lcdRow = 1;
-
     if(thisTimeThatTime2)
     {
-      myText = "N:"+ String(myChannel.getErrorCountNibble()) + " C:" + String(myChannel.getErrorCountCRC())  + " B:" + String(myChannel.getErrorCountOverflow())  ;
+      sprintf ( lcdTextBuffer, "N:%d C:%d B:%d     ", myChannel.getErrorCountNibble(),myChannel.getErrorCountCRC(),myChannel.getErrorCountOverflow());
     }
     else
     {
-      myText = "I:"+ String(myChannel.getErrorCountInQueueOverflow()) + " O:" + String(myChannel.getErrorCountOutQueueOverflow())  + " C:" + String(myChannel.getErrorCountConfQueueOverflow()) ;
+      sprintf ( lcdTextBuffer, "I:%d O:%d C:%d     ", myChannel.getErrorCountInQueueOverflow(),myChannel.getErrorCountOutQueueOverflow(),myChannel.getErrorCountConfQueueOverflow());
     }
 
-    //myText = PadMyText(myText,16);
     thisTimeThatTime2 = !thisTimeThatTime2;
   }
 
@@ -162,10 +160,8 @@ void prepareSendMessages()
   // Create a new message
   AllMessage newMessage;
 
-  // Copy data from text to the char buffer
-  myText.toCharArray(lcdTextBuffer,20);
-
   // Build two key values in newMessage.Data
+  myChannel.buildKeyValueDataFromKeyValueInt(newMessage.Data,"AD0",analogRead(A0));
   myChannel.buildKeyValueDataFromKeyValueInt(newMessage.Data,"LCDRow",lcdRow);
   myChannel.buildKeyValueDataFromKeyValue(newMessage.Data,"Text",lcdTextBuffer);
 
@@ -176,22 +172,6 @@ void prepareSendMessages()
   messagesReceived ++; // Or we don't include our sent messages in bus performance / speed
 
 }
-
-void busMessage(String myText)
-{
-
-
-
-  // Test Message for Chilli - 0x88
-  /*myText = "Hello chilli";
-	myText.getBytes(newMessage.Data,myText.length()+1);
-  newMessage.ReceiverId = 0x88; // Chilli
-  newMessage.Type = RS485::MESSAGE_MESSAGE; // Normal message
-  newMessage.RequiresConfirmation = false;
-  myChannel.OutQueueEnqueue(newMessage);*/
-
-}
-
 
 void loop ()
 {
@@ -211,13 +191,11 @@ void loop ()
 
   if(secondToggle)
   {
-    //bool buildKeyValueDataFromKeyValue(char * data, const char * key, const char *value);
+
     AllMessage newMessage;
-
     myChannel.buildKeyValueDataFromKeyValueInt(newMessage.Data,"BusSpeed",myChannel.getBusSpeed());
-
     newMessage.ReceiverId = 0x01; // Apricot
-    newMessage.Type = RS485::MESSAGE_MESSAGE; // For everyone
+    newMessage.Type = RS485::MESSAGE_MESSAGE;
     newMessage.RequiresConfirmation = false;
     myChannel.OutQueueEnqueue(newMessage);
     secondToggle = false;

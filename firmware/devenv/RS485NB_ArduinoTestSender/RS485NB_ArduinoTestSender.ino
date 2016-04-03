@@ -27,11 +27,11 @@ RS485 myChannel (fRead, fAvailable, fWrite,fWait, MESSAGE_DATA_SIZE + MESSAGE_HE
 int rtsPin = 2;
 int busBusyPin = 3;
 
-byte msg [MESSAGE_DATA_SIZE] = "AABBCCDDEE";
+byte msg [MESSAGE_DATA_SIZE];
 byte *ptrmsg = msg;
 byte allBoardId;
 int sensorValue=0;
-int sequence = 800;
+unsigned long sequence = 800;
 unsigned long millisLast;
 
 void setup ()
@@ -43,9 +43,9 @@ void setup ()
 	Serial1.begin (250000);
 	Serial.begin (250000);
 
-	//allBoardId = 0x10; // Rose
+	allBoardId = 0x10; // Rose
 	//allBoardId = 0x12; // Thyme
-	allBoardId = 0x11; // Basil
+	//allBoardId = 0x11; // Basil
 
 	myChannel.messageNotSentLED = 13;
 	myChannel.errorEventLED = 12;	
@@ -78,14 +78,20 @@ void setup ()
 
 }  // end of setup
 
-void busMessage(String myText)
+void analogueReadForMessage(byte * data)
+{
+	myChannel.buildKeyValueDataFromKeyValueInt(data, "AD0", analogRead(0));
+	myChannel.buildKeyValueDataFromKeyValueInt(data, "AD1", analogRead(1));
+	myChannel.buildKeyValueDataFromKeyValueInt(data, "AD2", analogRead(2));
+	myChannel.buildKeyValueDataFromKeyValueInt(data, "AD3", analogRead(3));
+}
+
+void busMessage()
 {
 	if(allBoardId == 0x10) // Rose
 	{
-		AllMessage newMessage;
-		myText = " S:" + String(sequence) + " M:" + String(millis()) + " " + String(allBoardId)  ;
-		sequence++;
-		myText.getBytes(newMessage.Data,myText.length());
+		AllMessage newMessage;	
+		analogueReadForMessage(newMessage.Data);
 		newMessage.ReceiverId = 0x11; // to Basil
 		newMessage.Type = RS485::MESSAGE_MESSAGE;
 		newMessage.RequiresConfirmation = 0;
@@ -96,9 +102,7 @@ void busMessage(String myText)
 	if(allBoardId == 0x11) // Basil
 	{
 		AllMessage newMessage;
-		myText = String(allBoardId) + " - AD0=" + String(sensorValue);
-		
-		myText.getBytes(newMessage.Data,myText.length());
+		analogueReadForMessage(newMessage.Data);
 		newMessage.ReceiverId = 0xFF;
 		newMessage.Type = RS485::MESSAGE_BOARDCAST;
 		newMessage.RequiresConfirmation = 0;
@@ -108,9 +112,7 @@ void busMessage(String myText)
 	if(allBoardId == 0x12) // Thyme
 	{		
 		AllMessage newMessage;
-		myText = String(allBoardId) + " - AD0=" + String(sensorValue);
-	
-		myText.getBytes(newMessage.Data,myText.length());
+		analogueReadForMessage(newMessage.Data);
 		newMessage.ReceiverId = 0xFF;
 		newMessage.Type = RS485::MESSAGE_BOARDCAST;
 		newMessage.RequiresConfirmation = 0;
@@ -129,7 +131,7 @@ void loop ()
 		if(millis()  > millisLast + sensorValue )
 		{
 			//Serial.print(sensorValue);
-			busMessage("");
+			busMessage();
 			millisLast = millis();
 		}
 	}

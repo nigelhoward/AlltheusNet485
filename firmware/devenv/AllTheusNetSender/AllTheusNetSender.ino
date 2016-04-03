@@ -147,6 +147,9 @@ void loop ()
     // Test Message for Chilli - 0x88
     AllMessage newMessage;
     myChannel.buildKeyValueDataFromKeyValueInt(newMessage.Data,"SpdGap",speedRegGapMillis);
+    myChannel.buildKeyValueDataFromKeyValueInt(newMessage.Data,"SpdGap1",speedRegGapMillis);
+    myChannel.buildKeyValueDataFromKeyValueInt(newMessage.Data,"SpdGap2",speedRegGapMillis);
+    myChannel.buildKeyValueDataFromKeyValueInt(newMessage.Data,"SpdGap3",speedRegGapMillis);
   	newMessage.ReceiverId = 0xFF; // Everyone
   	newMessage.Type = RS485::MESSAGE_BOARDCAST; // For everyone to see
   	newMessage.RequiresConfirmation = false;

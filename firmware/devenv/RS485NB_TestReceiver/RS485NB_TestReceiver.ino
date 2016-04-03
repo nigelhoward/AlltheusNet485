@@ -78,7 +78,7 @@ void setup()
 	myChannel.ignoreBoardcasts = true;
 	myChannel.begin (allBoardId);
 	myChannel.allNet485Enable(busBusyPin);
-	myChannel.debugErrorsToSerial = false;
+	myChannel.debugErrorsToSerial = true;
 
 	delay(allBoardId * 100);
 	Serial.print("Hello I'm ");
@@ -102,6 +102,25 @@ void loop()
 		
 		AllMessage allMessage;
 		allMessage = myChannel.InQueueDequeue();
+
+
+		//for (int i = 0; i < 35; i++)
+		//{
+
+		//	if (allMessage.Data[i] > 31 && allMessage.Data[i] < 127)
+		//	{
+		//		Serial.print((char)allMessage.Data[i]);
+		//	}
+		//	else
+		//	{
+		//		Serial.print("_");
+		//	}
+		//}
+
+
+
+		//Serial.println();
+
 		if (myChannel.keyValueKeyExists(allMessage.Data, "LCDRow"))
 		{
 			int rowNumber = myChannel.getKeyValueIntWithKey(allMessage.Data, "LCDRow"); // The keyValue with the row number
@@ -111,34 +130,18 @@ void loop()
 			KeyValueData keyValueData;
 			myChannel.getKeyValueDetailsWithKey(keyValueData,allMessage.Data, "Text"); // The text
 			
-			Serial.println();
-			Serial.println();
-			Serial.print("keyValueData.valueLength:");
-			Serial.println(keyValueData.valueLength);
-			Serial.print("keyValueData.valueStartPosition:");
-			Serial.println(keyValueData.valueStartPosition);
-
-			for (int i = 0; i < 35; i++)
-			{
-
-				if (allMessage.Data[i] > 31 && allMessage.Data[i] < 127)
-				{
-					Serial.print((char)allMessage.Data[i]);
-				}
-				else
-				{
-					Serial.print("_");
-				}
-			}
-
-
+			//Serial.println();
+			//Serial.println();
+			//Serial.print("keyValueData.valueLength:");
+			//Serial.println(keyValueData.valueLength);
+			//Serial.print("keyValueData.valueStartPosition:");
+			//Serial.println(keyValueData.valueStartPosition);
 
 			for (int i = 0; i < keyValueData.valueLength; i++)
 			{
 				lcd.print((char)allMessage.Data[i+ keyValueData.valueStartPosition]);
 			}
 		}
-
 	}
 
 }

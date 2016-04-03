@@ -160,13 +160,18 @@ void loop ()
 		AllMessage allMessage;
 		allMessage = myChannel.InQueueDequeue();
 
-		updateStats(allMessage);
-	
-		serialPrintStats(allMessage);
-	
-		serialPrintErrors();
+		//if (allMessage.SenderId == 0x01)
+		//{
+			updateStats(allMessage);
 
-		Serial.println();
+			serialPrintStats(allMessage);
+
+			serialPrintErrors();
+
+			Serial.println();
+
+		//}
+
 	}
 
 	if (millis() > lastMillis + 1000)
@@ -230,7 +235,7 @@ void serialPrintStats(AllMessage allMessage)
 	
 	Serial.print(" '");
 
-	for (int i = 0; i < 50; i++)
+	for (int i = 0; i < 35; i++)
 	{
 		myChannel.allNetUpdate();
 		if(allMessage.Data[i] > 31 && allMessage.Data[i] < 127)
