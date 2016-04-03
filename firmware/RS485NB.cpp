@@ -732,7 +732,7 @@ bool RS485::confirmationTimedOutForMessage(AllMessage allMessage)
 {
 	
 }
-// Filter out any unwanted mesages
+// Filter out any unwanted mesages like boardcasts or messages not for this board
 bool RS485::filterOutThisMessage(byte msgByte, int inputPosition)
 {
 

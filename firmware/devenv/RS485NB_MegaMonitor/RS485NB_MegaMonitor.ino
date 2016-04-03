@@ -38,7 +38,7 @@ int fAvailable(){ return Serial1.available(); }
 int fRead(){ return Serial1.read(); }
 
 
-byte msg [MESSAGE_DATA_SIZE] = "AABBCCDDEEFF";
+byte msg [MESSAGE_DATA_SIZE];
 
 RS485 myChannel (fRead, fAvailable, fWrite,fWait, MESSAGE_DATA_SIZE + MESSAGE_HEADER_SIZE);
 

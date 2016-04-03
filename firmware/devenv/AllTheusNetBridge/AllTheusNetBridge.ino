@@ -161,7 +161,7 @@ void prepareSendMessages()
   AllMessage newMessage;
 
   // Build two key values in newMessage.Data
-  myChannel.buildKeyValueDataFromKeyValueInt(newMessage.Data,"AD0",analogRead(A0));
+  // myChannel.buildKeyValueDataFromKeyValueInt(newMessage.Data,"AD0",analogRead(A0));
   myChannel.buildKeyValueDataFromKeyValueInt(newMessage.Data,"LCDRow",lcdRow);
   myChannel.buildKeyValueDataFromKeyValue(newMessage.Data,"Text",lcdTextBuffer);
 

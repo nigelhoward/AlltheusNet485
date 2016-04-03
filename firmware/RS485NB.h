@@ -296,7 +296,7 @@ class RS485
 
 
 	// Widens the gap either side of the data transmitted when bufferBusy wire goes low
-	// Helps reduce collisions but better kept low.
+	// Can help reduce collisions but better kept low.
 	byte busBusyDelayBeforeTransmit = 1; // Millis
 	byte busBusyDelayAfterTransmit = 1; // Millis
 
@@ -325,18 +325,34 @@ class RS485
 
 	// Methods for setting and retrieving values from the AllDevice.Data property or any buffer by reference
 	// Use KeyValue data structure if calling getKeyValueDetailsWithKey for data location and length
-	const int MESSAGE_VALUE_SIZE = MESSAGE_DATA_SIZE - 5; // Size of value char array - Or 5 less than DATA because at least one key value has {k=1}
+	// Some examples:-
+	// buildKeyValueDataFromKeyValue(data, "Day", "Monday");
+	// buildKeyValueDataFromKeyValueDouble(data, "D", 1235.456);
+	// buildKeyValueDataFromKeyValueLong(data, "Long",74564894);
+	// buildKeyValueDataFromKeyValueInt(data, "Int",45345);
+	// Will populate the given data C type string with the following
+	// {Day=Monday}{D=1235.456000}{Long=74564894}{Int=45345}
+
 	const int MESSAGE_KEY_SIZE = 12; // How long the key char array can be - 12 should cover most uses - Case sensitive
-	
+									 
+	// Returns true / false if a given key exists in the data
 	bool keyValueKeyExists(byte * data, const char * key);
+	// Main get value method which passes back a structure called KeyValueData which contains the array position and size of value associated with the given key
 	bool getKeyValueDetailsWithKey(KeyValueData &tempData, const byte * data, const char * key);
+	// Uses main get value method to return a long from given key
 	long getKeyValueLongWithKey(const byte * data, const char * key);
+	// Uses main get value method to return a Double from given key
 	double getKeyValueDoubleWithKey(const byte * data, const char * key);
+	// Uses main get value method to return an int from given key
 	int getKeyValueIntWithKey(const byte * data, const char * key);
 
+	// Main method for putting the key value in it's syntax in the given data buffer (byte array)
 	bool buildKeyValueDataFromKeyValue(byte * data, const char * key, const char *value);
-	bool buildKeyValueDataFromKeyValueDouble(byte * data, const char * key, const double value);
+	// Uses Main buildKeyValue.. Method to create a double key value
+	bool buildKeyValueDataFromKeyValueDouble(byte * data, const char * key, const double value); 
+	// Uses Main buildKeyValue.. Method to create a long key value
 	bool buildKeyValueDataFromKeyValueLong(byte * data, const char * key, const long value);
+	// Uses Main buildKeyValue.. Method to create an int key value
 	bool buildKeyValueDataFromKeyValueInt(byte * data, const char * key, const int value);
 
   }; // end of class RS485
