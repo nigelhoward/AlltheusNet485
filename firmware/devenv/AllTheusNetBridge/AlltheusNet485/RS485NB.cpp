@@ -14,7 +14,7 @@
 
  */
 
- // Version P3.2 - By TopBanana 27-03-2016
+ // Version P3.4 - By TopBanana 03-04-2016
 
 #include "RS485NB.h"
 
@@ -732,7 +732,7 @@ bool RS485::confirmationTimedOutForMessage(AllMessage allMessage)
 {
 	
 }
-// Filter out any unwanted mesages
+// Filter out any unwanted mesages like boardcasts or messages not for this board
 bool RS485::filterOutThisMessage(byte msgByte, int inputPosition)
 {
 
