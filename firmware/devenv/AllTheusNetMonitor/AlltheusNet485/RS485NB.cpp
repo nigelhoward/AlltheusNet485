@@ -837,12 +837,24 @@ bool RS485::getKeyValueDetailsWithKey(KeyValueData &tempData, const byte * data,
 
 bool RS485::buildKeyValueDataFromKeyValue(byte * data, const char * key, const char * value)
 {
+
+	//Serial.print("Key:");
+	//Serial.print(key);
+	//Serial.print(" Data before:");
+	//Serial.println((char*)data);
+
 	// Find position of the last value cruly
 	char * memoryLocationOfData = (char *) data; // Gets the actual mem address of the first byte of data
 	char * lastPosOfcurlystr = strrchr((char *)data, '}');
 
+	//Serial.print("lastPosOfcurlystr");
+	//Serial.println(lastPosOfcurlystr);
+
 	if (lastPosOfcurlystr == 0) lastPosOfcurlystr = memoryLocationOfData;
 	int lastValueCurly = lastPosOfcurlystr - memoryLocationOfData;
+
+	//Serial.print("lastValueCurly");
+	//Serial.println(lastValueCurly);
 
 	int insertPosition = 0;
 	if (lastValueCurly > 0) insertPosition = lastValueCurly + 1;
@@ -850,9 +862,15 @@ bool RS485::buildKeyValueDataFromKeyValue(byte * data, const char * key, const c
 	data[insertPosition] = '{';
 	insertPosition++;
 
+	//Serial.print("insertPosition");
+	//Serial.println(insertPosition);
+
 	// Calculate size of insert loop
 	int loopTo = MESSAGE_DATA_SIZE - insertPosition;
 	
+	//Serial.print("loopToA:");
+	//Serial.println(loopTo);
+
 	for (size_t i = 0; i < loopTo; i++)
 	{
 		char keyChar = key[i];
@@ -864,6 +882,10 @@ bool RS485::buildKeyValueDataFromKeyValue(byte * data, const char * key, const c
 	insertPosition++;
 
 	loopTo = MESSAGE_DATA_SIZE - insertPosition;
+
+	//Serial.print("loopToB:");
+	//Serial.println(loopTo);
+
 	for (int i = 0; i < loopTo; i++)
 	{
 		char valueChar = value[i];
@@ -875,6 +897,9 @@ bool RS485::buildKeyValueDataFromKeyValue(byte * data, const char * key, const c
 	data[insertPosition] = '}';
 	insertPosition++;
 	data[insertPosition] = '\0';
+
+	//Serial.print(" Data after:");
+	//Serial.println((char*)data);
 
 	return true;
 }

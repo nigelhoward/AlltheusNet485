@@ -40,6 +40,10 @@ struct KeyValueData
 class AllMessage
 	{
 	public:
+		AllMessage(int emptyDataChar=0)
+		{
+			memset(Data, emptyDataChar, MESSAGE_DATA_SIZE);
+		};
 
 		unsigned long Id;				// Id / Sequence number of the received message
 		byte SenderId;					// Who sent the message

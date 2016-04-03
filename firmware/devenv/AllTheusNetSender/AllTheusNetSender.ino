@@ -15,15 +15,13 @@ int Serial1TXcomplete(void)
   		return 0; // Not Complete
   }
 
-const int MESSAGE_SIZE = 50;
-
-RS485 myChannel (fRead, fAvailable, fWrite,fWait, MESSAGE_SIZE+10);
+RS485 myChannel (fRead, fAvailable, fWrite,fWait, MESSAGE_DATA_SIZE + MESSAGE_HEADER_SIZE);
 
 int messageNotSentLED = D7;
 int rtsPin = D1;
 int busBusyPin = D3;
 
-byte msg [MESSAGE_SIZE] = "AABBCCDDEE";
+byte msg [MESSAGE_DATA_SIZE];
 byte *ptrmsg = msg;
 byte allBoardId=0x00;
 
@@ -35,7 +33,7 @@ bool tenthSecondToggle = false;
 bool thisTimeThatTime = false;
 
 unsigned long speedRegLastMillis = 0;
-int speedRegGapMillis = 200;
+int speedRegGapMillis = 500;
 int currentBusSpeed = 0;
 
 Timer timerEvery1000ms(1000, everySecond);
@@ -108,9 +106,12 @@ void loop ()
 
 		AllMessage allMessage;
 		allMessage = myChannel.InQueueDequeue();
+
+    //Serial.println("GotaMessage");
     // Does the data exist
     if(myChannel.keyValueKeyExists(allMessage.Data,"BusSpeed"))
     {
+      //Serial.println("Key BusSpeed exists");
       int tempBusSpeed = myChannel.getKeyValueIntWithKey(allMessage.Data,"BusSpeed");
       if(tempBusSpeed!=0) currentBusSpeed = tempBusSpeed;
     }
@@ -129,7 +130,7 @@ void loop ()
 
   if(secondToggle)
   {
-    regulateSpeed();
+    if(allBoardId==0x01) regulateSpeed(); // Only apricot does this!
     secondToggle = false;
   }
 
@@ -138,18 +139,16 @@ void loop ()
   {
     speedRegLastMillis = millis();
 
-    Serial.print("currentBusSpeed:");
+    /*Serial.print("currentBusSpeed:");
     Serial.println(currentBusSpeed);
     Serial.print("Delay:");
-    Serial.println(speedRegGapMillis);
+    Serial.println(speedRegGapMillis);*/
     //if(currentBusSpeed==0) return;
 
-    // Test Message for Chilli - 0x88
+    // Send a message
     AllMessage newMessage;
-    myChannel.buildKeyValueDataFromKeyValueInt(newMessage.Data,"SpdGap",speedRegGapMillis);
-    myChannel.buildKeyValueDataFromKeyValueInt(newMessage.Data,"SpdGap1",speedRegGapMillis);
-    myChannel.buildKeyValueDataFromKeyValueInt(newMessage.Data,"SpdGap2",speedRegGapMillis);
-    myChannel.buildKeyValueDataFromKeyValueInt(newMessage.Data,"SpdGap3",speedRegGapMillis);
+    myChannel.buildKeyValueDataFromKeyValueInt(newMessage.Data,"MyID",allBoardId);
+    myChannel.buildKeyValueDataFromKeyValueInt(newMessage.Data,"TxGap",speedRegGapMillis);
   	newMessage.ReceiverId = 0xFF; // Everyone
   	newMessage.Type = RS485::MESSAGE_BOARDCAST; // For everyone to see
   	newMessage.RequiresConfirmation = false;
@@ -161,8 +160,8 @@ void loop ()
 
 void regulateSpeed()
 {
-  int minSpeed = 60;
-  int maxSpeed = 64;
+  int minSpeed = 10;
+  int maxSpeed = 12;
   int changeUpValue =-5;
   int changeDownValue =2;
 
