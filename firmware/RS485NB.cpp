@@ -782,6 +782,16 @@ int RS485::getKeyValueIntWithKey(const byte * data, const char * key)
 	delete buffer;
 	return result;
 }
+char RS485::getKeyValueCharWithKey(const byte * data, const char * key)
+{
+	KeyValueData funcTempData;
+	getKeyValueDetailsWithKey(funcTempData, data, key);
+	char *buffer = new char[MESSAGE_DATA_SIZE];
+	memcpy(buffer, data + funcTempData.valueStartPosition, funcTempData.valueLength);
+	char result = buffer[0];
+	delete buffer;
+	return result;
+}
 
 bool RS485::keyValueKeyExists(byte * data, const char * key)
 {
@@ -910,6 +920,15 @@ bool RS485::buildKeyValueDataFromKeyValueInt(byte * data, const char * key, cons
 	buildKeyValueDataFromKeyValue(data, key, valueBuffer);
 	delete valueBuffer;
 	if (cx > 0) return true;
+	return false;
+}
+bool RS485::buildKeyValueDataFromKeyValueChar(byte * data, const char * key, const char value)
+{
+	char *valueBuffer = new char[2];
+	valueBuffer[0] = value;
+	valueBuffer[1] = 0;
+	buildKeyValueDataFromKeyValue(data, key, valueBuffer);
+	delete valueBuffer;
 	return false;
 }
 bool RS485::buildKeyValueDataFromKeyValueLong(byte * data, const char * key, const long value)

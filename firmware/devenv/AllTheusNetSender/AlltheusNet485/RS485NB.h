@@ -147,7 +147,8 @@ class RS485
 	  enum
 	  {
 		  MESSAGE_BOARDCAST,	// Message sent to all boards on the bus
-		  MESSAGE_MESSAGE,		// For a specific Id
+		  MESSAGE_MESSAGE,		// For a specific device Id with user given data - Processed manually 
+		  MESSAGE_DEVICE,		// For a specific device Id with pre-formatted data - Processed automatically by AllDevice
 		  MESSAGE_CONFIRMATION	// Confirmation that message received
 	  };
 	  
@@ -336,24 +337,24 @@ class RS485
 	const int MESSAGE_KEY_SIZE = 12; // How long the key char array can be - 12 should cover most uses - Case sensitive
 									 
 	// Returns true / false if a given key exists in the data
-	bool keyValueKeyExists(byte * data, const char * key);
+	static bool keyValueKeyExists(byte * data, const char * key);
 	// Main get value method which passes back a structure called KeyValueData which contains the array position and size of value associated with the given key
-	bool getKeyValueDetailsWithKey(KeyValueData &tempData, const byte * data, const char * key);
+	static bool getKeyValueDetailsWithKey(KeyValueData &tempData, const byte * data, const char * key);
 	// Uses main get value method to return a long from given key
-	long getKeyValueLongWithKey(const byte * data, const char * key);
+	static long getKeyValueLongWithKey(const byte * data, const char * key);
 	// Uses main get value method to return a Double from given key
-	double getKeyValueDoubleWithKey(const byte * data, const char * key);
+	static double getKeyValueDoubleWithKey(const byte * data, const char * key);
 	// Uses main get value method to return an int from given key
-	int getKeyValueIntWithKey(const byte * data, const char * key);
+	static int getKeyValueIntWithKey(const byte * data, const char * key);
 
 	// Main method for putting the key value in it's syntax in the given data buffer (byte array)
-	bool buildKeyValueDataFromKeyValue(byte * data, const char * key, const char *value);
+	static bool buildKeyValueDataFromKeyValue(byte * data, const char * key, const char *value);
 	// Uses Main buildKeyValue.. Method to create a double key value
-	bool buildKeyValueDataFromKeyValueDouble(byte * data, const char * key, const double value); 
+	static bool buildKeyValueDataFromKeyValueDouble(byte * data, const char * key, const double value);
 	// Uses Main buildKeyValue.. Method to create a long key value
-	bool buildKeyValueDataFromKeyValueLong(byte * data, const char * key, const long value);
+	static bool buildKeyValueDataFromKeyValueLong(byte * data, const char * key, const long value);
 	// Uses Main buildKeyValue.. Method to create an int key value
-	bool buildKeyValueDataFromKeyValueInt(byte * data, const char * key, const int value);
+	static bool buildKeyValueDataFromKeyValueInt(byte * data, const char * key, const int value);
 
   }; // end of class RS485
 

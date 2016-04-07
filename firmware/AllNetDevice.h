@@ -11,14 +11,24 @@ AllDevice for devices that use the AllNet485
 #include "application.h" // This is Particle.io specific - Would have been arduino.h for Arduino
 #else
 #include "Arduino.h"
+// And some pin aliases to make code work for both Arduino and Particle
+static const char D0 = 0;
+static const char D1 = 1;
+static const char D2 = 2;
+static const char D3 = 3;
+
 #endif
+
 #include "AllQueue.h"
+#include "RS485NB.h"
 
 #ifndef _ALLNETDEVICE
 #define _ALLNETDEVICE
 
 class AllNetDevice
 {
+	typedef bool(*_receiveDataFunction) (byte * data); // Run this function when data is received for this device Id
+
 	public:
 	
 	byte BoardId = 0xFF;	// Id of board the device belongs to
@@ -29,6 +39,7 @@ class AllNetDevice
 	
 	byte Type;	// Type of device
 	
+	_receiveDataFunction receiveDataFunction = nullptr;
 	
 	/*
 	
@@ -87,7 +98,7 @@ class AllNetDevice
 		DEVICE_ACTION_RADIO_ON,		// If possible turns ON the radio on a device
 		DEVICE_ACTION_POWER_LOW,	// Go into low power mode if possible
 		DEVICE_ACTION_POWER_NORMAL	// Come out of low power mode 
-		
+
 	};
 	
 	bool Enable();	// Enables the device and sets any required pin modes. Pointer given to access device's properties
@@ -102,7 +113,7 @@ class AllNetDevice
 	
 	bool DoActions(); // Performs required actions on this device by calling given function pointer
 	byte GetAtionLast(); // Get the last action that was performed on this device by DoActions
-	void Process(); // Processes any tasks or functions that are required to update / change / etc devices 
+	void Process(AllMessage allMessage); // Processes any tasks or functions that are required to update / change / etc devices 
 	
 	bool SetPin(int pin); // Sets the pin for this device if allowed (It might already be in use elsewhere)
 

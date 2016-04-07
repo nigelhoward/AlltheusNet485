@@ -162,8 +162,8 @@ void prepareSendMessages()
 
   // Build two key values in newMessage.Data
   // myChannel.buildKeyValueDataFromKeyValueInt(newMessage.Data,"AD0",analogRead(A0));
-  myChannel.buildKeyValueDataFromKeyValueInt(newMessage.Data,"LCDRow",lcdRow);
-  myChannel.buildKeyValueDataFromKeyValue(newMessage.Data,"Text",lcdTextBuffer);
+  RS485::buildKeyValueDataFromKeyValueInt(newMessage.Data,"LCDRow",lcdRow);
+  RS485::buildKeyValueDataFromKeyValue(newMessage.Data,"Text",lcdTextBuffer);
 
   newMessage.ReceiverId = 0x14; // Pepper
   newMessage.Type = RS485::MESSAGE_MESSAGE; // Normal message
@@ -193,7 +193,7 @@ void loop ()
   {
 
     AllMessage newMessage;
-    myChannel.buildKeyValueDataFromKeyValueInt(newMessage.Data,"BusSpeed",myChannel.getBusSpeed());
+    RS485::buildKeyValueDataFromKeyValueInt(newMessage.Data,"BusSpeed",myChannel.getBusSpeed());
     newMessage.ReceiverId = 0x01; // Apricot
     newMessage.Type = RS485::MESSAGE_MESSAGE;
     newMessage.RequiresConfirmation = false;

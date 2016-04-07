@@ -112,7 +112,7 @@ void loop ()
     if(myChannel.keyValueKeyExists(allMessage.Data,"BusSpeed"))
     {
       //Serial.println("Key BusSpeed exists");
-      int tempBusSpeed = myChannel.getKeyValueIntWithKey(allMessage.Data,"BusSpeed");
+      int tempBusSpeed = RS485::getKeyValueIntWithKey(allMessage.Data,"BusSpeed");
       if(tempBusSpeed!=0) currentBusSpeed = tempBusSpeed;
     }
 
@@ -147,8 +147,8 @@ void loop ()
 
     // Send a message
     AllMessage newMessage;
-    myChannel.buildKeyValueDataFromKeyValueInt(newMessage.Data,"MyID",allBoardId);
-    myChannel.buildKeyValueDataFromKeyValueInt(newMessage.Data,"TxGap",speedRegGapMillis);
+    RS485::buildKeyValueDataFromKeyValueInt(newMessage.Data,"MyID",allBoardId);
+    RS485::buildKeyValueDataFromKeyValueInt(newMessage.Data,"TxGap",speedRegGapMillis);
   	newMessage.ReceiverId = 0xFF; // Everyone
   	newMessage.Type = RS485::MESSAGE_BOARDCAST; // For everyone to see
   	newMessage.RequiresConfirmation = false;

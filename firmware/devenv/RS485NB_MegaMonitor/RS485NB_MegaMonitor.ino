@@ -70,6 +70,8 @@ int busBusyLEDPin = 52;
 int errorLEDPin = 53;
 int messageNotSentLEDPin = 13;
 
+AllNetDevice myDevice;
+
 volatile bool newMessage = false;
 
 void setup ()
@@ -104,16 +106,29 @@ void setup ()
 
 	// TEST AllNetDevice //
 
-	AllNetDevice myDevice;
 	myDevice.Type = AllNetDevice::DEVICE_TYPE_COUNTER;
 	myDevice.BoardId = myId;
 	myDevice.Code = 0x01;
 	myDevice.BoardIdLinked = 0x14;
 	myDevice.CodeLinked = 0x02;
+	myDevice.receiveDataFunction = doThisWhenDataArrivesB;
 
-	///////////////////////
+	// TEST AllNetDevice END //
 	
 }  // end of setup
+
+// TEST AllNetDevice //
+bool doThisWhenDataArrivesA(byte* data)
+{
+	Serial.print("doThisWhenDataArrivesA");
+	return true;
+}
+bool doThisWhenDataArrivesB(byte* data)
+{
+	Serial.print("doThisWhenDataArrivesB");
+	return true;
+}
+// TEST AllNetDevice END //
 
 
 void busBusyInterrupt()
@@ -150,6 +165,12 @@ void updateStats(AllMessage allMessage)
 
 void loop ()
 {
+	AllMessage allMessage;
+	allMessage.Type = RS485::MESSAGE_DEVICE;
+	myDevice.Process(allMessage);
+	delay(5000);
+	return;
+
 	myChannel.allNetUpdate();
 	int messageInQueue = myChannel.inQueue.items;
 	for (int i = 0; i < messageInQueue; i++)
