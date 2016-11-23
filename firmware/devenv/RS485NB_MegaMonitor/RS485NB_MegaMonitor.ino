@@ -165,11 +165,11 @@ void updateStats(AllMessage allMessage)
 
 void loop ()
 {
-	AllMessage allMessage;
-	allMessage.Type = RS485::MESSAGE_DEVICE;
-	myDevice.Process(allMessage);
-	delay(5000);
-	return;
+	//AllMessage allMessage;
+	//allMessage.Type = RS485::MESSAGE_DEVICE;
+	//myDevice.Process(allMessage);
+	//delay(5000);
+	//return;
 
 	myChannel.allNetUpdate();
 	int messageInQueue = myChannel.inQueue.items;

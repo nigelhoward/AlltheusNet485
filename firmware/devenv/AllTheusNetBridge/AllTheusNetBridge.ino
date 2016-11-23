@@ -52,9 +52,16 @@ bool tenthSecondToggle = false;
 bool thisTimeThatTime = false;
 bool thisTimeThatTime2 = false;
 
+bool doneThisOnce = false;
+
 char lcdTextBuffer[MESSAGE_DATA_SIZE];
 
+// TCP Server Client
+TCPServer server = TCPServer(23);
+TCPClient client;
+
 void updateStats(AllMessage allMessage);
+void sendServerData(AllMessage allMessage);
 
 void everySecond()
 {
@@ -76,10 +83,14 @@ Timer timerEvery1000ms(1000, everySecond);
 Timer timerEvery500ms(500, everyHalfSecond);
 Timer timerEvery100ms(100, every10thSecond);
 
-
+/////////////////////////////
+//         Setup           //
+/////////////////////////////
 void setup ()
 {
-	WiFi.setCredentials("Moon", "takeme2the");
+	WiFi.setCredentials("ituescon", "iiamnotcon",WPA2);
+  WiFi.disconnect();
+  WiFi.connect();
 
 	pinMode(messageNotSentLED, OUTPUT);
 
@@ -109,6 +120,9 @@ void setup ()
 	Wire.begin(0x20);
 	delay(500);
 
+  // TCP
+  server.begin();
+
 	timerEvery100ms.start();
 	timerEvery500ms.start();
 	timerEvery1000ms.start();
@@ -131,6 +145,43 @@ String PadMyText(String myText , int newLength)
      }
    return myText;
 }
+void doThisOncePlease()
+{
+  int lcdRow;
+
+  doneThisOnce=true;
+
+  AllMessage newMessageIP;
+  newMessageIP.ReceiverId = 0x14; // Pepper
+  newMessageIP.Type = RS485::MESSAGE_MESSAGE; // Normal message
+  newMessageIP.RequiresConfirmation = false;
+  lcdRow=1;
+
+  String iPAddress = String(WiFi.localIP()) + "  ";
+  iPAddress.toCharArray(lcdTextBuffer, MESSAGE_DATA_SIZE);
+  RS485::buildKeyValueDataFromKeyValueInt(newMessageIP.Data,"LCDRow",lcdRow);
+  RS485::buildKeyValueDataFromKeyValue(newMessageIP.Data,"Text",lcdTextBuffer);
+  myChannel.OutQueueEnqueue(newMessageIP);
+
+  myChannel.allNetUpdate();
+
+
+
+  AllMessage newMessageText;
+  newMessageText.ReceiverId = 0x14; // Pepper
+  newMessageText.Type = RS485::MESSAGE_MESSAGE; // Normal message
+  newMessageText.RequiresConfirmation = false;
+  lcdRow=0;
+  sprintf ( lcdTextBuffer, "%s","Cherry IP       ");
+  RS485::buildKeyValueDataFromKeyValueInt(newMessageText.Data,"LCDRow",lcdRow);
+  RS485::buildKeyValueDataFromKeyValue(newMessageText.Data,"Text",lcdTextBuffer);
+  myChannel.OutQueueEnqueue(newMessageText);
+  myChannel.allNetUpdate();
+
+
+
+  delay(3000);
+}
 void prepareSendMessages()
 {
   int lcdRow=0;
@@ -138,7 +189,9 @@ void prepareSendMessages()
   if(thisTimeThatTime)
   {
     lcdRow = 0;
-    sprintf ( lcdTextBuffer, "%1.2f%% %07d %02d ",percentageErrors,messagesReceived,myChannel.getBusSpeed());
+    int busSpeed = myChannel.getBusSpeed();
+    if(busSpeed > 100) {busSpeed= busSpeed-100;}
+    sprintf ( lcdTextBuffer, "%1.3f%% %06d %02d ",percentageErrors,messagesReceived,busSpeed);
   }
   else
   {
@@ -173,8 +226,66 @@ void prepareSendMessages()
 
 }
 
-void loop ()
+void sendServerData(AllMessage allMessage)
 {
+  if (client.connected())
+  {
+    server.write("{\"AllMessage\":{");
+
+    server.write("\"Id\":\"");
+    server.write(String(allMessage.Id));
+    server.write("\",");
+
+    server.write("\"Type\":\"");
+    server.write(String(allMessage.Type, HEX));
+    server.write("\",");
+
+    server.write("\"SenderId\":\"");
+    server.write(String(allMessage.SenderId, HEX));
+    server.write("\",");
+
+    server.write("\"ReceiverId\":\"");
+    server.write(String(allMessage.ReceiverId, HEX));
+    server.write("\",");
+
+    server.write("\"RequiresConfirmation\":\"");
+    if(allMessage.RequiresConfirmation==true)
+    {
+      server.write("1");
+    }
+    else
+    {
+      server.write("0");
+    }
+
+    server.write("\",");
+
+    server.write("\"WhenReceived\":\"");
+    server.write(String(allMessage.WhenReceived));
+    server.write("\",");
+
+    server.write("\"Data\":\"");
+    server.write(allMessage.Data,MESSAGE_DATA_SIZE);
+    server.write("\"");
+
+    server.write("}}");
+
+    server.println();
+  }
+}
+
+/////////////////////////////
+//         Loop            //
+/////////////////////////////
+void loop ()
+ {
+
+  if (!client.connected())
+  {
+    // if no client is yet connected, check for a new connection
+    client = server.available();
+  }
+
   myChannel.allNetUpdate();
 
   Wire.onRequest(requestEvent); // register event
@@ -182,11 +293,13 @@ void loop ()
   if(tenthSecondToggle)
   {
     tenthSecondToggle = false;
+    //serverPrintStats();
   }
   if(halfSecondToggle)
   {
     halfSecondToggle = false;
     prepareSendMessages();
+
   }
 
   if(secondToggle)
@@ -208,10 +321,20 @@ void loop ()
     myChannel.allNetUpdate();
 		AllMessage allMessage;
 		allMessage = myChannel.InQueueDequeue();
-		updateStats(allMessage);
+
+    sendServerData(allMessage);
+    updateStats(allMessage);
+
+  }
+
+  if(doneThisOnce==false)
+  {
+    doThisOncePlease();
   }
 
 }  // end of loop
+
+
 
 void updateStats(AllMessage allMessage)
 {
@@ -289,4 +412,19 @@ void serialPrintErrors()
 		Serial.println(myChannel.getErrorCount());
 
 	}
+}
+
+
+void serverPrintStatsHIDEME()
+{
+  if (client.connected())
+  {
+    server.print("Messages :");
+    server.print(messagesReceived);;
+    server.print(" Rate :");
+    server.print( myChannel.getBusSpeed());
+    server.print(" PercentageErrors :");
+    server.println( percentageErrors);
+
+  }
 }

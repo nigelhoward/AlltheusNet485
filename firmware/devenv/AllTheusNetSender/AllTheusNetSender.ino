@@ -57,6 +57,10 @@ void every10thSecond()
 void setup ()
 {
 
+  WiFi.setCredentials("ituescon", "iiamnotcon",WPA2);
+  WiFi.disconnect();
+  WiFi.connect();
+
   Serial1.begin (250000);
   Serial.begin (115200);
 

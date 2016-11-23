@@ -54,7 +54,9 @@ void AllNetDevice::Process(AllMessage allMessage)
 			bool result;
 			result = receiveDataFunction(allMessage.Data); // Called function is responsible for getting data from data
 		}
+
 		else // Simple GPIO based set / get actions
+		
 		{
 			int action ;
 			char pinType ;
