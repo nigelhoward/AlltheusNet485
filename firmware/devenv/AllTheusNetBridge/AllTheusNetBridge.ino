@@ -55,6 +55,8 @@ bool thisTimeThatTime2 = false;
 bool doneThisOnce = false;
 
 char lcdTextBuffer[MESSAGE_DATA_SIZE];
+char messageInBuffer[MESSAGE_DATA_SIZE];
+int messageInBufferIndex;
 
 // TCP Server Client
 TCPServer server = TCPServer(23);
@@ -62,6 +64,7 @@ TCPClient client;
 
 void updateStats(AllMessage allMessage);
 void sendServerData(AllMessage allMessage);
+AllMessage readServerData();
 
 void everySecond()
 {
@@ -157,7 +160,7 @@ void doThisOncePlease()
   newMessageIP.RequiresConfirmation = false;
   lcdRow=1;
 
-  String iPAddress = String(WiFi.localIP()) + "  ";
+  String iPAddress = String(WiFi.localIP()) + "      ";
   iPAddress.toCharArray(lcdTextBuffer, MESSAGE_DATA_SIZE);
   RS485::buildKeyValueDataFromKeyValueInt(newMessageIP.Data,"LCDRow",lcdRow);
   RS485::buildKeyValueDataFromKeyValue(newMessageIP.Data,"Text",lcdTextBuffer);
@@ -172,7 +175,7 @@ void doThisOncePlease()
   newMessageText.Type = RS485::MESSAGE_MESSAGE; // Normal message
   newMessageText.RequiresConfirmation = false;
   lcdRow=0;
-  sprintf ( lcdTextBuffer, "%s","Cherry IP       ");
+  sprintf ( lcdTextBuffer, "%s","Cherry IP           ");
   RS485::buildKeyValueDataFromKeyValueInt(newMessageText.Data,"LCDRow",lcdRow);
   RS485::buildKeyValueDataFromKeyValue(newMessageText.Data,"Text",lcdTextBuffer);
   myChannel.OutQueueEnqueue(newMessageText);
@@ -198,11 +201,11 @@ void prepareSendMessages()
     lcdRow = 1;
     if(thisTimeThatTime2)
     {
-      sprintf ( lcdTextBuffer, "N:%d C:%d B:%d     ", myChannel.getErrorCountNibble(),myChannel.getErrorCountCRC(),myChannel.getErrorCountOverflow());
+      sprintf ( lcdTextBuffer, "N:%d C:%d B:%d M:%d  ", myChannel.getErrorCountNibble(),myChannel.getErrorCountCRC(),myChannel.getErrorCountOverflow(),messageInBufferIndex);
     }
     else
     {
-      sprintf ( lcdTextBuffer, "I:%d O:%d C:%d     ", myChannel.getErrorCountInQueueOverflow(),myChannel.getErrorCountOutQueueOverflow(),myChannel.getErrorCountConfQueueOverflow());
+      sprintf ( lcdTextBuffer, "I:%d O:%d C:%d M:%d ", myChannel.getErrorCountInQueueOverflow(),myChannel.getErrorCountOutQueueOverflow(),myChannel.getErrorCountConfQueueOverflow(),messageInBufferIndex);
     }
 
     thisTimeThatTime2 = !thisTimeThatTime2;
@@ -226,51 +229,68 @@ void prepareSendMessages()
 
 }
 
+AllMessage readServerData()
+{
+  //int bytesRead = client.read(*messageInBuffer, MESSAGE_DATA_SIZE);
+  int readByte = client.read();
+
+  if (readByte!=-1)
+  {
+    messageInBufferIndex++;
+    if(messageInBufferIndex>MESSAGE_DATA_SIZE) messageInBufferIndex ==0;
+    // Do something with the data
+    digitalWrite(myChannel.errorEventLED, !digitalRead(myChannel.errorEventLED));
+  }
+}
+
 void sendServerData(AllMessage allMessage)
 {
   if (client.connected())
   {
-    server.write("{\"AllMessage\":{");
 
-    server.write("\"Id\":\"");
+    server.write("[");
+
+    //server.write("{\"AllMessage\":");
+    server.write("{");
+
+    server.write("\"Id\":");
     server.write(String(allMessage.Id));
-    server.write("\",");
+    server.write(",");
 
-    server.write("\"Type\":\"");
-    server.write(String(allMessage.Type, HEX));
-    server.write("\",");
+    server.write("\"Typ\":");
+    server.write(String(allMessage.Type));
+    server.write(",");
 
-    server.write("\"SenderId\":\"");
-    server.write(String(allMessage.SenderId, HEX));
-    server.write("\",");
+    server.write("\"SId\":");
+    server.write(String(allMessage.SenderId));
+    server.write(",");
 
-    server.write("\"ReceiverId\":\"");
-    server.write(String(allMessage.ReceiverId, HEX));
-    server.write("\",");
+    server.write("\"RId\":");
+    server.write(String(allMessage.ReceiverId));
+    server.write(",");
 
-    server.write("\"RequiresConfirmation\":\"");
+    server.write("\"Cnf\":");
     if(allMessage.RequiresConfirmation==true)
     {
-      server.write("1");
+      server.write("\"TRUE\"");
     }
     else
     {
-      server.write("0");
+      server.write("\"FALSE\"");
     }
 
-    server.write("\",");
+    server.write(",");
 
-    server.write("\"WhenReceived\":\"");
+    server.write("\"Rcv\":");
     server.write(String(allMessage.WhenReceived));
-    server.write("\",");
+    server.write(",");
 
-    server.write("\"Data\":\"");
+    server.write("\"Dat\":\"");
+    //server.write("None");
     server.write(allMessage.Data,MESSAGE_DATA_SIZE);
     server.write("\"");
-
-    server.write("}}");
-
-    server.println();
+    server.write("}");
+    server.write("]");
   }
 }
 
@@ -326,6 +346,8 @@ void loop ()
     updateStats(allMessage);
 
   }
+
+  readServerData();
 
   if(doneThisOnce==false)
   {

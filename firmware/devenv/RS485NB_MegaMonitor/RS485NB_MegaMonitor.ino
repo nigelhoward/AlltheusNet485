@@ -1,3 +1,9 @@
+#include <EthernetUdp.h>
+#include <EthernetServer.h>
+#include <EthernetClient.h>
+#include <Ethernet.h>
+#include <Dns.h>
+#include <Dhcp.h>
 #include <RS485NB.h>
 #include <AllNetDevice.h>
 
@@ -74,6 +80,32 @@ AllNetDevice myDevice;
 
 volatile bool newMessage = false;
 
+const int RECEIVE_MESSAGE_BUFFER_SIZE = 256;
+byte messageReceivedBuffer[RECEIVE_MESSAGE_BUFFER_SIZE];
+int messageReceivedBufferIndex;
+bool messageStartJsonReceived = false;
+bool messageEndJsonReceived = false;
+const char messageStartJsonReceivedChar = '[';
+const char  messageEndJsonReceivedChar = ']';
+
+
+// TCP Server Client
+
+// MAC address for the ethernet shield:
+byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
+//the IP address for the shield:
+byte ip[] = { 192, 168, 1, 151 };
+// the router's gateway address:
+byte gateway[] = { 192, 168, 1, 1 };
+// the subnet:
+byte subnet[] = { 255, 255, 255, 0 };
+
+EthernetServer server = EthernetServer(23);
+EthernetClient client;
+
+void sendServerData(AllMessage allMessage);
+AllMessage readServerData();
+
 void setup ()
 {
 	thisPeriod = millis() / samplePeriodForMessagesPerPeriod;
@@ -96,9 +128,13 @@ void setup ()
 	myChannel.inQueueSize = 20;
 	myChannel.allNet485Enable(busBusyPin);
 
-	
 	myChannel.inQueue.debug = false;
+
+	myChannel.debugErrorsToSerial = true;
 	
+	Ethernet.begin(mac, ip, gateway, subnet);
+	server.begin();
+
 	attachInterrupt(digitalPinToInterrupt(busBusyPin), busBusyInterrupt, CHANGE);
 	
 	Serial.println("Hi I'm Chilli!");
@@ -163,13 +199,16 @@ void updateStats(AllMessage allMessage)
 	newMessage = false;
 }
 
+/////////////////////////////
+//         Loop            //
+/////////////////////////////
+
 void loop ()
 {
-	//AllMessage allMessage;
-	//allMessage.Type = RS485::MESSAGE_DEVICE;
-	//myDevice.Process(allMessage);
-	//delay(5000);
-	//return;
+	if (!client)
+	{
+		client = server.available();
+	}
 
 	myChannel.allNetUpdate();
 	int messageInQueue = myChannel.inQueue.items;
@@ -181,17 +220,16 @@ void loop ()
 		AllMessage allMessage;
 		allMessage = myChannel.InQueueDequeue();
 
-		//if (allMessage.SenderId == 0x01)
-		//{
-			updateStats(allMessage);
 
-			serialPrintStats(allMessage);
+		sendServerData(allMessage);
+		updateStats(allMessage);
 
-			serialPrintErrors();
+		//serialPrintStats(allMessage);
 
-			Serial.println();
+		//serialPrintErrors();
 
-		//}
+		//Serial.println();
+
 
 	}
 
@@ -203,7 +241,8 @@ void loop ()
 		//sendMessage();
 	}
 
-	
+	readServerData();
+
 }  // end of loop
 
 
@@ -313,6 +352,206 @@ void serialPrintErrors()
 	}
 	
 
+}
+
+AllMessage readServerData()
+{
+	bool debug = false;
+	//int bytesRead = client.read(*messageInBuffer, MESSAGE_DATA_SIZE);
+	if (client)
+	{
+		int readByte = client.read();
+		if (readByte != -1)
+		{
+			long Id = 0;
+			int SId = 0;
+			int RId = 0;
+			bool Cnf = 0;
+			byte aBuffer[50];
+
+
+			AllMessage allMessage;
+
+			switch (readByte)
+			{
+
+				case messageStartJsonReceivedChar:
+
+					messageStartJsonReceived = true;
+
+					break; // messageStartJsonReceivedChar
+
+				case messageEndJsonReceivedChar:
+				
+					// Process the message then reset the read
+					
+					messageReceivedBuffer[messageReceivedBufferIndex] = '\0'; // Terminate the char string correctly
+
+	
+					SId = myChannel.getKeyValueIntWithKey(messageReceivedBuffer, "SId");					
+					RId = myChannel.getKeyValueIntWithKey(messageReceivedBuffer, "RId");
+					Cnf = myChannel.getKeyValueIntWithKey(messageReceivedBuffer, "Cnf");
+
+					
+
+					// Data is has undetermined size so need to get KeyValueData object for start and length
+					if (debug)
+					{
+						Serial.print(" SenderId=");
+						Serial.print(SId);					
+						Serial.print(" ReceiverId=");
+						Serial.print(RId);
+						Serial.print(" ConfirmationRequired=");
+						Serial.print(Cnf);
+						Serial.println("messageReceivedBuffer");
+
+						Serial.print(" Data=");
+
+						for (int i = 0; i < messageReceivedBufferIndex; i++)
+						{
+							Serial.print((char)messageReceivedBuffer[i]);
+						}
+					}
+					static KeyValueData keyValueData;
+
+					myChannel.getKeyValueDetailsWithKey(keyValueData, messageReceivedBuffer, "Dat"); // The data text
+
+					allMessage.SenderId = SId;
+					allMessage.ReceiverId = RId;
+					allMessage.RequiresConfirmation = Cnf;
+					allMessage.Type = RS485::MESSAGE_MESSAGE;
+
+					for (int i = 0; i < keyValueData.valueLength; i++)
+					{
+						char byteForMessage = messageReceivedBuffer[i + keyValueData.valueStartPosition];
+
+						// Put back curlys because send from csharp used <>
+						if (byteForMessage == '<') { byteForMessage = '{'; }
+						if (byteForMessage == '>') { byteForMessage = '}'; }
+
+						allMessage.Data[i] = byteForMessage;
+					}
+
+					myChannel.OutQueueEnqueue(allMessage);
+
+					resetReadServerData();
+
+					break; // messageEndJsonReceivedChar
+
+				default:
+
+					if (messageStartJsonReceived == true)
+					{
+						messageReceivedBuffer[messageReceivedBufferIndex] = readByte;
+						messageReceivedBufferIndex++;
+
+						if (messageReceivedBufferIndex > RECEIVE_MESSAGE_BUFFER_SIZE)
+						{
+							Serial.println("messageReceivedBufferIndex overflow");
+							resetReadServerData();
+							break;
+						}
+
+						//Serial.print(char(readByte));
+					}
+					break; // Default
+			}
+
+		}
+	}
+
+
+
+	//if (readByte != -1)
+	//{
+	//	messageInBufferIndex++;
+	//	if (messageInBufferIndex>MESSAGE_DATA_SIZE) messageInBufferIndex == 0;
+	//	// Do something with the data
+	//	digitalWrite(myChannel.errorEventLED, !digitalRead(myChannel.errorEventLED));
+	//}
+}
+void resetReadServerData()
+{
+	messageReceivedBufferIndex = 0;
+	messageStartJsonReceived = false;
+	messageEndJsonReceived = false;
+
+	for (int i = 0; i < RECEIVE_MESSAGE_BUFFER_SIZE; i++)
+	{
+		messageReceivedBuffer[i] = '\0';
+	}
+
+}
+void sendServerData(AllMessage allMessage)
+{
+	if (client)
+	{
+		server.print("[");
+
+		//server.write("{\"AllMessage\":");
+		server.print("{");
+
+		myChannel.allNetUpdate();
+
+		server.print("\"Id\":");
+		server.print(allMessage.Id);
+		server.print(",");
+
+		myChannel.allNetUpdate();
+
+		server.print("\"Typ\":");
+		server.print(allMessage.Type);
+		server.print(",");
+
+		myChannel.allNetUpdate();
+
+		server.print("\"SId\":");
+		server.print(allMessage.SenderId);
+		server.print(",");
+
+		myChannel.allNetUpdate();
+
+		server.print("\"RId\":");
+		server.print(allMessage.ReceiverId);
+		server.print(",");
+
+		myChannel.allNetUpdate();
+
+		server.print("\"Cnf\":");
+		if (allMessage.RequiresConfirmation == true)
+		{
+			server.print("\"TRUE\"");
+		}
+		else
+		{
+			server.print("\"FALSE\"");
+		}
+		myChannel.allNetUpdate();
+
+		server.print(",");
+
+		myChannel.allNetUpdate();
+
+		server.print("\"Rcv\":");
+		server.print(allMessage.WhenReceived);
+		server.print(",");
+
+		myChannel.allNetUpdate();
+
+		server.print("\"Dat\":\"");
+		//server.print("None");
+
+		for (int i = 0; i < MESSAGE_DATA_SIZE; i++)
+		{
+			server.write(allMessage.Data[i]);
+
+			myChannel.allNetUpdate();
+		}
+
+		server.print("\"");
+		server.print("}");
+		server.print("]");
+	}
 }
 
 
