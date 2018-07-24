@@ -18,7 +18,7 @@ AllNet485 Extension uses an additional wire to stop other boards from transmitti
 But adds the ability to have multiple masters that can all talk on the same bus
 Primarily for home automation that doesn't require a fast bus but does require reliability
 
-###Notes on callbacks
+### Notes on callbacks
 Callbacks handle the serial IO and are passed as function pointers in the instantiation of the RS485 Channel at the begining of the sketch. Here's an example on the class instantiation as myChannel:
 ```CPP
 RS485 myChannel (fRead, fAvailable, fWrite,fWait, MESSAGE_SIZE+10);
@@ -57,11 +57,11 @@ int fAvailable(){ return Serial1.available(); }
 int fRead(){ return Serial1.read(); }
 // End callbacks
 ```
-###Credits:-
+### Credits:-
 Nick Gammon - http://www.gammon.com.au/forum/?id=11428 - For the original RS485 Non blocking library
 Efstathios Chatzikyriakidis - http://playground.arduino.cc/Code/QueueArray - For QueueArray library I hacked to suit my requirements here.
 
-###Please note - July 2018
+## Please note - July 2018
 
 This is very, very much work in progress. Current work commitments have made it difficult for me to update thsi page and the corresponding website. I will hopefully be able to return to this project in the very neare future.
 
