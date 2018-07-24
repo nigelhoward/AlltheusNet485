@@ -1,3 +1,8 @@
+## Please note - July 2018
+
+This is very, very much work in progress. Current work commitments have made it difficult for me to update this repo and the corresponding website. I will hopefully be able to return to this project in the very neare future.
+
+
 # AlltheusNet485
 Arduino and Photon library for inter IOT Device coms using an adapted version of RS485
 
@@ -61,10 +66,5 @@ int fRead(){ return Serial1.read(); }
 Nick Gammon - http://www.gammon.com.au/forum/?id=11428 - For the original RS485 Non blocking library
 Efstathios Chatzikyriakidis - http://playground.arduino.cc/Code/QueueArray - For QueueArray library I hacked to suit my requirements here.
 
-## Please note - July 2018
-
-This is very, very much work in progress. Current work commitments have made it difficult for me to update thsi page and the corresponding website. I will hopefully be able to return to this project in the very neare future.
 
 
-
-More later ....
