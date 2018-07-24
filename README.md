@@ -3,7 +3,7 @@
 This is very, very much work in progress. Current work commitments have made it difficult for me to update this repo and the corresponding website. I will hopefully be able to return to this project in the very neare future.
 
 
-# AlltheusNet485
+## AlltheusNet485
 Arduino and Photon library for inter IOT Device coms using an adapted version of RS485
 
 Allthough tested and functional the documentation needs updating and I am in the process of adding ring buffers to the AllNet485 methods of the RS485NB class. Please PM me for more details. 
